@@ -7,51 +7,104 @@ namespace Tickets.Infrastructure.Repositories;
 
 public sealed class CatalogRepository(ISqlConnectionFactory connectionFactory) : ICatalogRepository
 {
-    public async Task<IReadOnlyList<Area>> GetActiveAreasAsync(CancellationToken ct = default)
+    // ---------- Clasificación ----------
+    public async Task<IReadOnlyList<Clasificacion>> GetClasificacionesAsync(CancellationToken ct = default)
     {
-        const string sql = "SELECT Id, Code, Name, IsActive, CreatedAt FROM dbo.Areas WHERE IsActive = 1 ORDER BY Name;";
+        const string sql = "SELECT Id, Nombre, Activo, FechaAlta FROM dbo.Clasificacion WHERE Activo = 1 ORDER BY Nombre;";
         await using var conn = connectionFactory.CreateTicketsConnection();
-        return (await conn.QueryAsync<Area>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
+        return (await conn.QueryAsync<Clasificacion>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
     }
 
-    public async Task<IReadOnlyList<TicketType>> GetTicketTypesByAreaAsync(string areaCode, CancellationToken ct = default)
+    public async Task<Clasificacion?> GetClasificacionAsync(int id, CancellationToken ct = default)
     {
-        const string sql = """
-            SELECT tt.Id, tt.AreaId, tt.Name, tt.DefaultResponsibleUserCode, tt.IsActive, tt.CreatedAt,
-                   a.Code AS AreaCode, a.Name AS AreaName
-            FROM dbo.TicketTypes tt
-            INNER JOIN dbo.Areas a ON a.Id = tt.AreaId
-            WHERE tt.IsActive = 1 AND a.Code = @AreaCode
-            ORDER BY tt.Name;
-            """;
+        const string sql = "SELECT Id, Nombre, Activo, FechaAlta FROM dbo.Clasificacion WHERE Id = @Id;";
         await using var conn = connectionFactory.CreateTicketsConnection();
-        return (await conn.QueryAsync<TicketType>(new CommandDefinition(sql, new { AreaCode = areaCode }, cancellationToken: ct))).ToList();
+        return await conn.QuerySingleOrDefaultAsync<Clasificacion>(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
     }
 
-    public async Task<IReadOnlyList<TicketType>> GetActiveTicketTypesAsync(CancellationToken ct = default)
+    public async Task<Clasificacion?> GetClasificacionByNombreAsync(string nombre, CancellationToken ct = default)
     {
-        const string sql = """
-            SELECT tt.Id, tt.AreaId, tt.Name, tt.DefaultResponsibleUserCode, tt.IsActive, tt.CreatedAt,
-                   a.Code AS AreaCode, a.Name AS AreaName
-            FROM dbo.TicketTypes tt
-            INNER JOIN dbo.Areas a ON a.Id = tt.AreaId
-            WHERE tt.IsActive = 1
-            ORDER BY tt.Name;
-            """;
+        const string sql = "SELECT Id, Nombre, Activo, FechaAlta FROM dbo.Clasificacion WHERE Nombre = @Nombre;";
         await using var conn = connectionFactory.CreateTicketsConnection();
-        return (await conn.QueryAsync<TicketType>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
+        return await conn.QuerySingleOrDefaultAsync<Clasificacion>(new CommandDefinition(sql, new { Nombre = nombre }, cancellationToken: ct));
     }
 
-    public async Task<TicketType?> GetTicketTypeAsync(int id, CancellationToken ct = default)
+    public async Task<int> InsertClasificacionAsync(Clasificacion c, CancellationToken ct = default)
     {
         const string sql = """
-            SELECT tt.Id, tt.AreaId, tt.Name, tt.DefaultResponsibleUserCode, tt.IsActive, tt.CreatedAt,
-                   a.Code AS AreaCode, a.Name AS AreaName
-            FROM dbo.TicketTypes tt
-            INNER JOIN dbo.Areas a ON a.Id = tt.AreaId
-            WHERE tt.Id = @Id;
+            INSERT INTO dbo.Clasificacion (Nombre, Activo, FechaAlta) VALUES (@Nombre, @Activo, @FechaAlta);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
             """;
         await using var conn = connectionFactory.CreateTicketsConnection();
-        return await conn.QuerySingleOrDefaultAsync<TicketType>(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+        return await conn.QuerySingleAsync<int>(new CommandDefinition(sql, c, cancellationToken: ct));
+    }
+
+    // ---------- Categoría ----------
+    public async Task<IReadOnlyList<Categoria>> GetCategoriasByClasificacionAsync(int clasificacionId, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT Id, ClasificacionId, Nombre, Activo, FechaAlta FROM dbo.Categoria
+            WHERE Activo = 1 AND ClasificacionId = @ClasificacionId ORDER BY Nombre;
+            """;
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return (await conn.QueryAsync<Categoria>(new CommandDefinition(sql, new { ClasificacionId = clasificacionId }, cancellationToken: ct))).ToList();
+    }
+
+    public async Task<Categoria?> GetCategoriaAsync(int id, CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, ClasificacionId, Nombre, Activo, FechaAlta FROM dbo.Categoria WHERE Id = @Id;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.QuerySingleOrDefaultAsync<Categoria>(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+    }
+
+    public async Task<Categoria?> GetCategoriaByNombreAsync(int clasificacionId, string nombre, CancellationToken ct = default)
+    {
+        const string sql = """
+            SELECT Id, ClasificacionId, Nombre, Activo, FechaAlta FROM dbo.Categoria
+            WHERE ClasificacionId = @ClasificacionId AND Nombre = @Nombre;
+            """;
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.QuerySingleOrDefaultAsync<Categoria>(
+            new CommandDefinition(sql, new { ClasificacionId = clasificacionId, Nombre = nombre }, cancellationToken: ct));
+    }
+
+    public async Task<int> InsertCategoriaAsync(Categoria c, CancellationToken ct = default)
+    {
+        const string sql = """
+            INSERT INTO dbo.Categoria (ClasificacionId, Nombre, Activo, FechaAlta)
+            VALUES (@ClasificacionId, @Nombre, @Activo, @FechaAlta);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);
+            """;
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.QuerySingleAsync<int>(new CommandDefinition(sql, c, cancellationToken: ct));
+    }
+
+    // ---------- Prioridad / Estatus ----------
+    public async Task<IReadOnlyList<Prioridad>> GetPrioridadesAsync(CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Nombre, Descripcion, Orden FROM dbo.Prioridad ORDER BY Orden;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return (await conn.QueryAsync<Prioridad>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
+    }
+
+    public async Task<Prioridad?> GetPrioridadAsync(byte id, CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Nombre, Descripcion, Orden FROM dbo.Prioridad WHERE Id = @Id;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.QuerySingleOrDefaultAsync<Prioridad>(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
+    }
+
+    public async Task<IReadOnlyList<Estatus>> GetEstatusListAsync(CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Nombre, Orden, EsFinal FROM dbo.Estatus ORDER BY Orden;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return (await conn.QueryAsync<Estatus>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
+    }
+
+    public async Task<Estatus?> GetEstatusAsync(byte id, CancellationToken ct = default)
+    {
+        const string sql = "SELECT Id, Nombre, Orden, EsFinal FROM dbo.Estatus WHERE Id = @Id;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.QuerySingleOrDefaultAsync<Estatus>(new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
     }
 }

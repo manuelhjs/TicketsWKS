@@ -10,4 +10,8 @@ public sealed class TicketsIndexViewModel
     public string FullName { get; init; } = string.Empty;
     public string DepartmentName { get; init; } = string.Empty;
     public string Position { get; init; } = string.Empty;
+
+    // Solicitante por defecto (usuario actual auto-provisionado como Empleado)
+    public int CurrentEmpleadoId { get; init; }
+    public string CurrentEmpleadoNombre { get; init; } = string.Empty;
 }

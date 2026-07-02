@@ -1,60 +1,42 @@
 /* =====================================================================
-   Datos semilla mínimos para poder ejecutar el módulo.
-   Los códigos de usuario (RequesterUserCode, etc.) son referencias
-   externas a SAP; aquí se usan valores de ejemplo.
+   Datos semilla del módulo de Tickets. Ejecutar después de 01_Schema.sql.
    ===================================================================== */
 USE B1_PROA_MX_V2;
 GO
 
-/* Catálogo de estatus (Ids estables usados por el enum TicketStatus en C#) */
-MERGE dbo.TicketStatuses AS target
-USING (VALUES
-    (1, N'A',  N'Creado'),
-    (2, N'EP', N'En Proceso'),
-    (3, N'C',  N'Cerrado')
-) AS src (Id, Code, Name)
-ON target.Id = src.Id
-WHEN MATCHED THEN UPDATE SET Code = src.Code, Name = src.Name
-WHEN NOT MATCHED THEN INSERT (Id, Code, Name) VALUES (src.Id, src.Code, src.Name);
+INSERT INTO dbo.Prioridad (Id, Nombre, Descripcion, Orden) VALUES
+    (1, N'Alto',  N'Detiene la operación — atención de 1 a 4 horas.',  1),
+    (2, N'Medio', N'No detiene la operación — atención de 1 a 2 días.', 2),
+    (3, N'Bajo',  N'Atención de 1 a 5 días.',                           3);
 GO
 
-/* Áreas */
-IF NOT EXISTS (SELECT 1 FROM dbo.Areas)
-BEGIN
-    INSERT INTO dbo.Areas (Code, Name) VALUES
-        (N'CAL', N'Calidad'),
-        (N'PD',  N'Producción'),
-        (N'SIS', N'Sistemas');
-END
+INSERT INTO dbo.Estatus (Id, Nombre, Orden, EsFinal) VALUES
+    (1,  N'Por asignar',     1,  0),
+    (2,  N'Asignado',        2,  0),
+    (3,  N'Análisis',        3,  0),
+    (4,  N'Desarrollo',      4,  0),
+    (5,  N'Pruebas TI',      5,  0),
+    (6,  N'Pruebas Usuario', 6,  0),
+    (7,  N'Cotización',      7,  0),
+    (8,  N'Autorización',    8,  0),
+    (9,  N'Pausa',           9,  0),
+    (10, N'En proceso',     10,  0),
+    (11, N'Cancelado',      11,  1),
+    (12, N'Finalizado',     12,  1);
 GO
 
-/* Tipos de solicitud por área */
-IF NOT EXISTS (SELECT 1 FROM dbo.TicketTypes)
-BEGIN
-    DECLARE @cal INT = (SELECT Id FROM dbo.Areas WHERE Code = N'CAL');
-    DECLARE @pd  INT = (SELECT Id FROM dbo.Areas WHERE Code = N'PD');
-    DECLARE @sis INT = (SELECT Id FROM dbo.Areas WHERE Code = N'SIS');
-
-    INSERT INTO dbo.TicketTypes (AreaId, Name, DefaultResponsibleUserCode) VALUES
-        (@cal, N'No conformidad',      N'jhernandez'),
-        (@cal, N'Devolución',          N'jhernandez'),
-        (@pd,  N'Falla de máquina',    N'klopez'),
-        (@pd,  N'Mantenimiento',       N'klopez'),
-        (@sis, N'Soporte de sistemas', N'blozano'),
-        (@sis, N'Alta de usuario',     N'blozano');
-END
+INSERT INTO dbo.Clasificacion (Nombre) VALUES
+    (N'SAP'), (N'CRM'), (N'QUOTE'), (N'FACTURACIÓN'), (N'COMPRAS'), (N'LOGÍSTICA');
 GO
 
-/* Un par de tickets de ejemplo */
-IF NOT EXISTS (SELECT 1 FROM dbo.Tickets)
-BEGIN
-    DECLARE @tType INT = (SELECT TOP 1 Id FROM dbo.TicketTypes ORDER BY Id);
+INSERT INTO dbo.Categoria (ClasificacionId, Nombre)
+SELECT Id, N'General' FROM dbo.Clasificacion;
+INSERT INTO dbo.Categoria (ClasificacionId, Nombre)
+SELECT Id, N'Acceso / Permisos' FROM dbo.Clasificacion WHERE Nombre IN (N'SAP', N'CRM');
+GO
 
-    INSERT INTO dbo.Tickets
-        (TicketTypeId, StatusId, RequesterUserCode, DepartmentCode, ResponsibleUserCode,
-         Description, Category, RegisteredTime, CreatedAt)
-    VALUES
-        (@tType, 1, N'jperez', N'VEN', N'jhernandez',
-         N'Ticket de ejemplo — revisión de no conformidad.', N'S', CAST(SYSUTCDATETIME() AS TIME(0)), SYSUTCDATETIME());
-END
+INSERT INTO dbo.Empleados (Codigo, Nombre, Correo, Telefono) VALUES
+    (N'blozano', N'Benjamín Lozano', N'blozano@impulsoraint.com', N'5512345678'),
+    (N'jperez',  N'Juan Pérez',      N'jperez@impulsoraint.com',  NULL),
+    (NULL,       N'María García',    NULL,                        NULL);
 GO

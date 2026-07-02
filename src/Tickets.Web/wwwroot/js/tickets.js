@@ -3,10 +3,8 @@
     "use strict";
 
     const cfg = window.ticketsConfig;
-    const STATUS = { 1: "Creado", 2: "En Proceso", 3: "Cerrado" };
-    const STATUS_BADGE = { 1: "bg-warning text-dark", 2: "bg-info text-dark", 3: "bg-success" };
-
-    const state = { responsibles: [], table: null, detailModal: null };
+    const NEW = "__new__";
+    const state = { table: null, detailModal: null, empleados: [], estatus: [], prioridades: [], clasificaciones: [] };
 
     // ---------- HTTP ----------
     async function getJson(url, params) {
@@ -28,26 +26,20 @@
     }
     async function handle(res) {
         let body = null;
-        try { body = await res.json(); } catch { /* sin cuerpo */ }
+        try { body = await res.json(); } catch { }
         if (!res.ok) throw new Error((body && body.message) || "Ocurrió un error (" + res.status + ").");
         return body;
     }
 
     // ---------- Utilidades ----------
+    function el(id) { return document.getElementById(id); }
     function toast(message, variant) {
-        let c = document.getElementById("toastContainer");
-        if (!c) {
-            c = document.createElement("div");
-            c.id = "toastContainer";
-            c.className = "toast-container position-fixed top-0 end-0 p-3";
-            document.body.appendChild(c);
-        }
+        let c = el("toastContainer");
+        if (!c) { c = document.createElement("div"); c.id = "toastContainer"; c.className = "toast-container position-fixed top-0 end-0 p-3"; document.body.appendChild(c); }
         const e = document.createElement("div");
         e.className = "toast align-items-center text-bg-" + (variant || "primary") + " border-0 show";
-        e.innerHTML = '<div class="d-flex"><div class="toast-body">' + escapeHtml(message) +
-            '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
-        c.appendChild(e);
-        setTimeout(() => e.remove(), 4000);
+        e.innerHTML = '<div class="d-flex"><div class="toast-body">' + escapeHtml(message) + '</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>';
+        c.appendChild(e); setTimeout(() => e.remove(), 4500);
     }
     function escapeHtml(s) {
         if (s === null || s === undefined) return "";
@@ -55,311 +47,373 @@
     }
     function fmtDate(v) {
         if (!v) return "—";
-        if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v)) {
-            const [y, m, d] = v.substring(0, 10).split("-");
-            return d + "/" + m + "/" + y;
+        if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && v.length === 10) {
+            const [y, m, d] = v.split("-"); return d + "/" + m + "/" + y;
         }
         return new Date(v).toLocaleDateString("es-MX");
     }
     function fmtDateTime(v) { return v ? new Date(v).toLocaleString("es-MX") : "—"; }
-    function fmtMoney(v) { return (v === null || v === undefined) ? "—" : Number(v).toLocaleString("es-MX", { style: "currency", currency: "MXN" }); }
-    function fmtNum(v) { return (v === null || v === undefined) ? "—" : Number(v).toLocaleString("es-MX"); }
-    function el(id) { return document.getElementById(id); }
-    function statusBadge(status) {
-        return '<span class="badge ' + (STATUS_BADGE[status] || "bg-secondary") + '">' + (STATUS[status] || "—") + '</span>';
+    function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.ceil(b / 1024) + " KB"; }
+    function initTooltips(scope) {
+        (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(e => {
+            if (!e._tt) e._tt = new bootstrap.Tooltip(e);
+        });
+    }
+    function fillSelect(id, options, firstText) {
+        const sel = el(id); if (!sel) return;
+        sel.innerHTML = firstText !== undefined ? '<option value="">' + firstText + '</option>' : "";
+        options.forEach(o => { const opt = document.createElement("option"); opt.value = o.value; opt.textContent = o.text; sel.appendChild(opt); });
+    }
+
+    // ---------- Carga de catálogos ----------
+    async function loadPrioridades() {
+        state.prioridades = (await getJson(cfg.urls.getPrioridades)).data;
+        // radios en el formulario de creación
+        const box = el("prioridadRadios");
+        box.innerHTML = state.prioridades.map((p, i) =>
+            '<div class="form-check form-check-inline">' +
+            '<input class="form-check-input" type="radio" name="PrioridadId" id="prio' + p.id + '" value="' + p.id + '"' + (i === 1 ? " checked" : "") + '>' +
+            '<label class="form-check-label" for="prio' + p.id + '">' + escapeHtml(p.nombre) +
+            ' <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" title="' + escapeHtml(p.descripcion) + '"></i></label></div>'
+        ).join("");
+        initTooltips(box);
+        const opts = state.prioridades.map(p => ({ value: p.id, text: p.nombre }));
+        fillSelect("dtlPrioridad", opts);
+        fillSelect("filterPrioridad", opts, "Prioridad");
+    }
+    async function loadEstatus() {
+        state.estatus = (await getJson(cfg.urls.getEstatus)).data;
+        const opts = state.estatus.map(e => ({ value: e.id, text: e.nombre }));
+        fillSelect("filterEstatus", opts, "Estatus");
+        fillSelect("dtlEstatus", opts);
+    }
+    async function loadClasificaciones() {
+        state.clasificaciones = (await getJson(cfg.urls.getClasificaciones)).data;
+        const withOtro = state.clasificaciones.concat([{ value: NEW, text: "➕ Otro…" }]);
+        fillSelect("createClasificacion", withOtro, "Seleccione…");
+        fillSelect("dtlClasificacion", state.clasificaciones);
+        fillSelect("filterClasificacion", state.clasificaciones, "Clasificación");
+    }
+    async function loadEmpleados() {
+        state.empleados = (await getJson(cfg.urls.getEmpleados)).data;
+        const opts = state.empleados.map(e => ({ value: e.id, text: e.nombre }));
+        fillSelect("createSolicitante", opts, "Seleccione…");
+        fillSelect("dtlResponsable", opts, "— Sin responsable —");
+        fillSelect("filterSolicitante", opts, "Solicitante");
+        // Preseleccionar al usuario actual
+        if (cfg.currentEmpleadoId) {
+            el("createSolicitante").value = cfg.currentEmpleadoId;
+            autofillCorreo();
+        }
+    }
+    async function loadCategorias(clasId, targetId, includeOtro) {
+        const sel = el(targetId);
+        sel.innerHTML = '<option value="">Seleccione…</option>';
+        if (!clasId || clasId === NEW) return;
+        const data = (await getJson(cfg.urls.getCategorias, { clasificacionId: clasId })).data;
+        data.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.text; sel.appendChild(o); });
+        if (includeOtro) { const o = document.createElement("option"); o.value = NEW; o.textContent = "➕ Otro…"; sel.appendChild(o); }
+    }
+
+    // ---------- "Otro" ----------
+    async function handleOtroClasificacion(selectId, reloadCatTarget) {
+        const nombre = prompt("Nueva clasificación:");
+        const sel = el(selectId);
+        if (!nombre || !nombre.trim()) { sel.value = ""; return; }
+        try {
+            const r = await postForm(cfg.urls.addClasificacion, { Nombre: nombre.trim() });
+            addOption(sel, r.data, NEW);
+            sel.value = r.data.value;
+            state.clasificaciones = (await getJson(cfg.urls.getClasificaciones)).data;
+            if (reloadCatTarget) await loadCategorias(r.data.value, reloadCatTarget, true);
+        } catch (e) { toast(e.message, "danger"); sel.value = ""; }
+    }
+    async function handleOtroCategoria(selectId, clasId) {
+        const nombre = prompt("Nueva categoría:");
+        const sel = el(selectId);
+        if (!nombre || !nombre.trim()) { sel.value = ""; return; }
+        try {
+            const r = await postForm(cfg.urls.addCategoria, { ClasificacionId: clasId, Nombre: nombre.trim() });
+            addOption(sel, r.data, NEW);
+            sel.value = r.data.value;
+        } catch (e) { toast(e.message, "danger"); sel.value = ""; }
+    }
+    function addOption(sel, opt, beforeValue) {
+        const o = document.createElement("option"); o.value = opt.value; o.textContent = opt.text;
+        const ref = [...sel.options].find(x => x.value === beforeValue);
+        if (ref) sel.insertBefore(o, ref); else sel.appendChild(o);
+    }
+
+    // ---------- Formulario de creación ----------
+    function autofillCorreo() {
+        const id = el("createSolicitante").value;
+        const emp = state.empleados.find(e => String(e.id) === String(id));
+        if (emp) el("createCorreo").value = emp.correo || "";
+    }
+    async function submitCreate(ev) {
+        ev.preventDefault();
+        const form = el("createTicketForm");
+        if (el("createClasificacion").value === NEW || el("createCategoria").value === NEW) {
+            toast("Completa la clasificación/categoría.", "danger"); return;
+        }
+        const data = new URLSearchParams(new FormData(form));
+        try {
+            const r = await postForm(cfg.urls.create, data.toString());
+            const files = el("createFiles").files;
+            if (files.length) await uploadFiles(r.id, files);
+            toast("Ticket creado.", "success");
+            form.reset();
+            el("descCount").textContent = "0";
+            el("createCategoria").innerHTML = '<option value="">Seleccione…</option>';
+            el("createSolicitante").value = cfg.currentEmpleadoId || "";
+            autofillCorreo();
+            await Promise.all([refreshDashboard(), loadEmpleados()]);
+            await loadTickets();
+        } catch (e) { toast(e.message, "danger"); }
+    }
+    async function uploadFiles(ticketId, fileList) {
+        const fd = new FormData();
+        fd.append("ticketId", ticketId);
+        [...fileList].forEach(f => fd.append("files", f));
+        const r = await postFile(cfg.urls.uploadAdjuntos, fd);
+        if (r.errores && r.errores.length) r.errores.forEach(m => toast(m, "danger"));
     }
 
     // ---------- Filtros ----------
-    function val(id) { const e = el(id); return e ? e.value : ""; }
     function currentFilter() {
+        const v = id => { const e = el(id); return e ? e.value : ""; };
         return {
-            Status: document.querySelector("input[name='statusFilter']:checked").value,
-            Period: val("filterPeriod"),
-            RequesterUserCode: val("filterRequester"),
-            TicketTypeId: val("filterType"),
-            DepartmentCode: val("filterDepartment"),
-            ResponsibleUserCode: val("filterResponsible")
+            EstatusId: v("filterEstatus"), ClasificacionId: v("filterClasificacion"),
+            PrioridadId: v("filterPrioridad"), SolicitanteId: v("filterSolicitante"),
+            TipoSolicitud: v("filterTipo"), Period: v("filterPeriod")
         };
     }
-    function fillSelect(id, options, keepFirst) {
-        const sel = el(id);
-        if (!sel) return;
-        const first = keepFirst ? sel.options[0] : null;
-        sel.innerHTML = "";
-        if (first) sel.appendChild(first);
-        options.forEach(o => {
-            const opt = document.createElement("option");
-            opt.value = o.value; opt.textContent = o.text;
-            sel.appendChild(opt);
-        });
-    }
-    async function loadFilterOptions() {
-        const r = await getJson(cfg.urls.getFilterOptions);
-        const d = r.data;
-        state.responsibles = d.responsibles || [];
-        fillSelect("filterRequester", d.requesters, true);
-        fillSelect("filterType", d.ticketTypes, true);
-        fillSelect("filterDepartment", d.departments, true);
-        fillSelect("filterResponsible", d.responsibles, true);
-    }
     async function refreshDashboard() {
-        const r = await getJson(cfg.urls.getDashboard);
-        el("statOpen").textContent = r.data.totalOpen;
-        if (el("statInProgress")) el("statInProgress").textContent = r.data.totalInProgress;
-        el("statClosed").textContent = r.data.totalClosed;
+        const d = (await getJson(cfg.urls.getDashboard)).data;
+        el("statTotal").textContent = d.total;
+        el("statPorAsignar").textContent = d.porAsignar;
+        el("statEnCurso").textContent = d.enCurso;
+        el("statFinalizados").textContent = d.finalizados;
     }
 
-    // ---------- Tabla (DataTables) ----------
+    // ---------- Tabla ----------
     const DT_LANG = {
-        emptyTable: "Sin tickets.",
-        info: "Mostrando _START_ a _END_ de _TOTAL_",
-        infoEmpty: "0 registros",
-        infoFiltered: "(filtrado de _MAX_)",
-        lengthMenu: "Mostrar _MENU_",
-        loadingRecords: "Cargando…",
-        processing: "Procesando…",
-        search: "Buscar:",
-        zeroRecords: "Sin coincidencias",
+        emptyTable: "Sin tickets.", info: "Mostrando _START_ a _END_ de _TOTAL_", infoEmpty: "0 registros",
+        infoFiltered: "(filtrado de _MAX_)", lengthMenu: "Mostrar _MENU_", loadingRecords: "Cargando…",
+        processing: "Procesando…", search: "Buscar:", zeroRecords: "Sin coincidencias",
         paginate: { first: "Primero", last: "Último", next: "Siguiente", previous: "Anterior" }
     };
-
     function initTable() {
         state.table = $("#ticketsTable").DataTable({
-            data: [],
-            language: DT_LANG,
-            order: [[0, "desc"]],
-            pageLength: 25,
+            data: [], language: DT_LANG, order: [[0, "desc"]], pageLength: 25,
             columns: [
                 { data: "id", render: d => '<span class="fw-semibold text-primary">#' + d + '</span>' },
-                { data: "ticketTypeName", defaultContent: "—" },
-                { data: "requesterName", render: (d, t, row) => escapeHtml(d || row.requesterUserCode) },
-                { data: "departmentName", render: (d, t, row) => escapeHtml(d || row.departmentCode || "—") },
-                { data: "responsibleName", render: (d, t, row) => escapeHtml(d || row.responsibleUserCode || "—") },
+                { data: "solicitanteNombre" },
+                { data: "tipoSolicitudNombre" },
+                { data: "clasificacionNombre" },
+                { data: "categoriaNombre" },
+                { data: "prioridadNombre" },
+                { data: "estatusNombre", render: d => '<span class="badge bg-secondary">' + escapeHtml(d) + '</span>' },
+                { data: "responsableNombre", render: d => escapeHtml(d || "—") },
                 { data: "createdAt", render: fmtDate },
-                { data: "status", render: statusBadge },
-                { data: "estimatedCloseDate", render: fmtDate },
-                { data: "closedAt", render: fmtDate },
-                {
-                    data: null, orderable: false, searchable: false, className: "text-center",
-                    render: () => '<button type="button" class="btn btn-sm btn-primary js-view">Ver</button>'
-                }
+                { data: null, orderable: false, searchable: false, className: "text-center", render: () => '<button type="button" class="btn btn-sm btn-primary">Ver</button>' }
             ]
         });
-
-        // Clic en cualquier parte de la fila (incluido el botón "Ver") abre el detalle.
         $("#ticketsTable tbody").on("click", "tr", function () {
-            const data = state.table.row(this).data();
-            if (data) openDetail(data.id);
+            const d = state.table.row(this).data();
+            if (d) openDetail(d.id);
         });
     }
-
     async function loadTickets() {
         try {
             const r = await getJson(cfg.urls.getTickets, currentFilter());
             state.table.clear().rows.add(r.items).draw();
-        } catch (e) {
-            toast(e.message, "danger");
-        }
+        } catch (e) { toast(e.message, "danger"); }
     }
 
     // ---------- Modal de detalle ----------
-    function setText(id, value) { el(id).textContent = (value === null || value === undefined || value === "") ? "—" : value; }
-
     async function openDetail(id) {
         try {
-            const r = await getJson(cfg.urls.getTicket, { id });
-            populateDetail(r.data);
-            await loadComments(id);
+            const t = (await getJson(cfg.urls.getTicket, { id })).data;
+            await populateDetail(t);
+            await Promise.all([loadAdjuntos(id), loadComments(id), loadHistorial(id), loadLog(id)]);
             state.detailModal.show();
         } catch (e) { toast(e.message, "danger"); }
     }
-
-    function populateDetail(t) {
-        setText("dtlId", "#" + t.id);
-        setText("dtlType", t.ticketTypeName);
-        setText("dtlArea", t.areaName);
-        el("dtlStatusBadge").className = "badge " + (STATUS_BADGE[t.status] || "bg-secondary");
-        el("dtlStatusBadge").textContent = STATUS[t.status] || "—";
-        setText("dtlRequester", t.requesterName || t.requesterUserCode);
-        setText("dtlDepartment", t.departmentName || t.departmentCode);
-        setText("dtlCreated", fmtDateTime(t.createdAt));
-        setText("dtlClosed", t.closedAt ? fmtDateTime(t.closedAt) : "—");
-        setText("dtlQuality", t.qualityDepartment);
-        setText("dtlMachine", t.machine);
-        setText("dtlAmount", fmtMoney(t.amount));
-        setText("dtlQuantity", fmtNum(t.quantity));
-        setText("dtlDescription", t.description);
-
-        const att = el("dtlAttachment");
-        if (t.attachmentFileName) {
-            att.innerHTML = '<a href="' + cfg.urls.downloadAttachment + '?fileName=' +
-                encodeURIComponent(t.attachmentFileName) + '">' + escapeHtml(t.attachmentFileName) + '</a>';
-        } else {
-            att.textContent = "Sin archivo";
-        }
-        el("btnDtlUpload").dataset.id = t.id;
+    async function populateDetail(t) {
+        el("ticketDetailModal").dataset.id = t.id;
+        el("dtlId").textContent = "#" + t.id;
+        el("dtlSolicitante").textContent = t.solicitanteNombre;
+        el("dtlEstatusActual").textContent = t.estatusNombre;
+        el("dtlCreated").textContent = fmtDateTime(t.createdAt);
+        el("dtlCorreo").value = t.correo || "";
+        el("dtlCelular").value = t.celular || "";
+        el("dtlTipo").value = t.tipoSolicitud;
+        el("dtlPrioridad").value = t.prioridadId;
+        el("dtlClasificacion").value = t.clasificacionId;
+        el("dtlDescripcion").value = t.descripcion;
+        el("dtlEstatus").value = t.estatusId;
+        el("dtlEstatusComentario").value = "";
+        el("dtlResponsable").value = t.responsableEmpleadoId || "";
         el("dtlCommentTicketId").value = t.id;
-
-        // Gestión (acceso completo, sin roles)
-        const manage = el("dtlManage");
-        manage.dataset.id = t.id;
-        el("dtlStatus").value = t.status;
-        el("dtlEstimate").value = t.estimatedCloseDate || "";
-        el("dtlCategory").value = t.category || "";
-        fillResponsibleSelect(t.responsibleUserCode, t.responsibleName);
+        await loadCategorias(t.clasificacionId, "dtlCategoria", false);
+        el("dtlCategoria").value = t.categoriaId;
     }
-
-    function fillResponsibleSelect(code, name) {
-        const sel = el("dtlResponsible");
-        let list = state.responsibles.slice();
-        if (code && !list.some(o => o.value === code)) list.unshift({ value: code, text: name || code });
-        sel.innerHTML = '<option value="">—</option>' + list
-            .map(o => '<option value="' + escapeHtml(o.value) + '"' + (o.value === code ? " selected" : "") + '>' + escapeHtml(o.text) + '</option>')
-            .join("");
-    }
+    function ticketId() { return el("ticketDetailModal").dataset.id; }
 
     async function saveDetail() {
-        const id = el("dtlManage").dataset.id;
-        const status = el("dtlStatus").value;
-        const estimate = el("dtlEstimate").value;
-        const responsible = el("dtlResponsible").value;
-        const category = el("dtlCategory").value;
+        const id = ticketId();
         try {
-            await postForm(cfg.urls.updateStatus, { TicketId: id, Status: status, EstimatedCloseDate: estimate || "" });
-            if (responsible) await postForm(cfg.urls.updateResponsible, { TicketId: id, ResponsibleUserCode: responsible });
-            if (category) await postForm(cfg.urls.updateCategory, { TicketId: id, Category: category });
+            await postForm(cfg.urls.update, {
+                TicketId: id, Correo: el("dtlCorreo").value, Celular: el("dtlCelular").value,
+                TipoSolicitud: el("dtlTipo").value, ClasificacionId: el("dtlClasificacion").value,
+                CategoriaId: el("dtlCategoria").value, PrioridadId: el("dtlPrioridad").value,
+                Descripcion: el("dtlDescripcion").value
+            });
             toast("Cambios guardados.", "success");
-            state.detailModal.hide();
-            await refreshDashboard();
-            await loadTickets();
+            await Promise.all([loadTickets(), loadLog(id)]);
         } catch (e) { toast(e.message, "danger"); }
     }
-
-    async function inactivateDetail() {
-        const id = el("dtlManage").dataset.id;
+    async function changeStatus() {
+        const id = ticketId();
+        const comentario = el("dtlEstatusComentario").value.trim();
+        if (!comentario) { toast("El comentario es obligatorio al cambiar de estatus.", "danger"); return; }
+        try {
+            await postForm(cfg.urls.changeStatus, { TicketId: id, EstatusId: el("dtlEstatus").value, Comentario: comentario });
+            toast("Estatus actualizado.", "success");
+            const t = (await getJson(cfg.urls.getTicket, { id })).data;
+            el("dtlEstatusActual").textContent = t.estatusNombre;
+            el("dtlEstatusComentario").value = "";
+            await Promise.all([loadHistorial(id), refreshDashboard(), loadTickets()]);
+        } catch (e) { toast(e.message, "danger"); }
+    }
+    async function assignResponsable() {
+        const id = ticketId();
+        const resp = el("dtlResponsable").value;
+        if (!resp) { toast("Selecciona un responsable.", "danger"); return; }
+        try {
+            await postForm(cfg.urls.assignResponsable, { TicketId: id, ResponsableEmpleadoId: resp });
+            toast("Responsable asignado.", "success");
+            await Promise.all([loadTickets(), loadLog(id)]);
+        } catch (e) { toast(e.message, "danger"); }
+    }
+    async function inactivate() {
+        const id = ticketId();
         if (!confirm("¿Inactivar el ticket #" + id + "?")) return;
         try {
             await postForm(cfg.urls.setInactive, { id });
             toast("Ticket inactivado.", "success");
             state.detailModal.hide();
-            await refreshDashboard();
-            await loadTickets();
+            await Promise.all([refreshDashboard(), loadTickets()]);
         } catch (e) { toast(e.message, "danger"); }
     }
 
-    function uploadAttachment(id) {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.onchange = async () => {
-            if (!input.files.length) return;
-            const fd = new FormData();
-            fd.append("ticketId", id);
-            fd.append("file", input.files[0]);
-            try {
-                await postFile(cfg.urls.uploadAttachment, fd);
-                toast("Archivo adjuntado.", "success");
-                await openDetail(id);
-                await loadTickets();
-            } catch (e) { toast(e.message, "danger"); }
-        };
-        input.click();
+    // ---------- Adjuntos ----------
+    async function loadAdjuntos(id) {
+        const data = (await getJson(cfg.urls.getAdjuntos, { ticketId: id })).data;
+        el("dtlAdjuntos").innerHTML = data.length
+            ? data.map(a => '<li><i class="bi bi-paperclip"></i> <a href="' + cfg.urls.downloadAdjunto + '?id=' + a.id + '">' +
+                escapeHtml(a.nombreOriginal) + '</a> <span class="text-muted">(' + fmtSize(a.tamanoBytes) + ')</span></li>').join("")
+            : '<li class="text-muted">Sin evidencias.</li>';
+    }
+    async function uploadDetailFiles() {
+        const id = ticketId();
+        const files = el("dtlFiles").files;
+        if (!files.length) return;
+        try { await uploadFiles(id, files); el("dtlFiles").value = ""; toast("Evidencias subidas.", "success"); await Promise.all([loadAdjuntos(id), loadLog(id)]); }
+        catch (e) { toast(e.message, "danger"); }
     }
 
     // ---------- Comentarios ----------
-    async function loadComments(ticketId) {
-        const list = el("dtlComments");
-        list.innerHTML = '<p class="text-muted text-center small">Cargando…</p>';
-        try {
-            const r = await getJson(cfg.urls.getComments, { ticketId });
-            renderComments(r.data);
-        } catch (e) { list.innerHTML = '<p class="text-danger text-center small">' + escapeHtml(e.message) + '</p>'; }
-    }
-    function renderComments(items) {
-        const list = el("dtlComments");
-        if (!items.length) { list.innerHTML = '<p class="text-muted text-center small">Sin comentarios.</p>'; return; }
-        list.innerHTML = items.map(c =>
-            '<div class="comment"><div class="d-flex justify-content-between"><strong>' + escapeHtml(c.authorName) +
-            '</strong><small class="text-muted">' + fmtDateTime(c.createdAt) + '</small></div>' +
-            '<div>' + escapeHtml(c.body) + '</div></div>').join("");
+    async function loadComments(id) {
+        const data = (await getJson(cfg.urls.getComments, { ticketId: id })).data;
+        el("dtlComments").innerHTML = data.length
+            ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between"><strong>' + escapeHtml(c.autorNombre) +
+                '</strong><small class="text-muted">' + fmtDateTime(c.createdAt) + '</small></div><div>' + escapeHtml(c.comentario) + '</div></div>').join("")
+            : '<p class="text-muted text-center small">Sin comentarios.</p>';
     }
 
-    // ---------- Formulario de creación ----------
-    async function loadAreas() {
-        const r = await getJson(cfg.urls.getAreas);
-        fillSelect("createArea", r.data, true);
+    // ---------- Historial / bitácora ----------
+    async function loadHistorial(id) {
+        const data = (await getJson(cfg.urls.getHistorial, { ticketId: id })).data;
+        el("dtlHistorial").innerHTML = data.length
+            ? data.map(h => '<tr><td>' + fmtDateTime(h.fecha) + '</td><td>' + escapeHtml(h.estatusAnterior || "—") +
+                '</td><td>' + escapeHtml(h.estatusNuevo) + '</td><td>' + escapeHtml(h.comentario) + '</td><td>' + escapeHtml(h.usuarioCodigo) + '</td></tr>').join("")
+            : '<tr><td colspan="5" class="text-muted text-center">Sin registros.</td></tr>';
     }
-    async function onAreaChange() {
-        const areaCode = el("createArea").value;
-        document.querySelectorAll("[data-area-field]").forEach(e =>
-            e.classList.toggle("d-none", e.getAttribute("data-area-field") !== areaCode));
-
-        const typeSel = el("createType");
-        typeSel.innerHTML = '<option value="">Seleccione…</option>';
-        if (!areaCode) return;
-        const r = await getJson(cfg.urls.getTicketTypes, { areaCode });
-        r.data.forEach(t => {
-            const opt = document.createElement("option");
-            opt.value = t.id; opt.textContent = t.name;
-            typeSel.appendChild(opt);
-        });
-    }
-    async function submitCreate(ev) {
-        ev.preventDefault();
-        const form = el("createTicketForm");
-        const data = new URLSearchParams(new FormData(form)).toString();
-        try {
-            const r = await postForm(cfg.urls.create, data);
-            const fileInput = el("createFile");
-            if (fileInput.files.length && r.id) {
-                const fd = new FormData();
-                fd.append("ticketId", r.id);
-                fd.append("file", fileInput.files[0]);
-                await postFile(cfg.urls.uploadAttachment, fd);
-            }
-            toast("Ticket creado.", "success");
-            form.reset();
-            document.querySelectorAll("[data-area-field]").forEach(e => e.classList.add("d-none"));
-            await refreshDashboard();
-            await loadFilterOptions();
-            await loadTickets();
-        } catch (e) { toast(e.message, "danger"); }
+    async function loadLog(id) {
+        const data = (await getJson(cfg.urls.getLog, { ticketId: id })).data;
+        el("dtlLog").innerHTML = data.length
+            ? data.map(l => '<tr><td>' + fmtDateTime(l.fechaHora) + '</td><td>' + escapeHtml(l.accion) + '</td><td>' + escapeHtml(l.descripcion || "") +
+                '</td><td>' + escapeHtml(l.valorAnterior || "—") + '</td><td>' + escapeHtml(l.valorNuevo || "—") + '</td><td>' + escapeHtml(l.usuarioCodigo || "") + '</td></tr>').join("")
+            : '<tr><td colspan="6" class="text-muted text-center">Sin registros.</td></tr>';
     }
 
     // ---------- Init ----------
     $(async function () {
         state.detailModal = new bootstrap.Modal(el("ticketDetailModal"));
         initTable();
+        initTooltips();
 
-        document.querySelectorAll("input[name='statusFilter']").forEach(r => r.addEventListener("change", loadTickets));
-        el("btnApplyFilters").addEventListener("click", loadTickets);
-        el("btnClearFilters").addEventListener("click", () => {
-            ["filterRequester", "filterType", "filterDepartment", "filterResponsible"].forEach(id => { if (el(id)) el(id).value = ""; });
-            el("filterPeriod").value = "last2Years";
-            el("stAll").checked = true;
-            loadTickets();
+        // Creación
+        el("createSolicitante").addEventListener("change", autofillCorreo);
+        el("createClasificacion").addEventListener("change", async e => {
+            if (e.target.value === NEW) return handleOtroClasificacion("createClasificacion", "createCategoria");
+            await loadCategorias(e.target.value, "createCategoria", true);
+        });
+        el("createCategoria").addEventListener("change", e => {
+            if (e.target.value === NEW) handleOtroCategoria("createCategoria", el("createClasificacion").value);
+        });
+        el("createDescripcion").addEventListener("input", e => el("descCount").textContent = e.target.value.length);
+        el("createTicketForm").addEventListener("submit", submitCreate);
+        el("createResetBtn").addEventListener("click", () => setTimeout(() => {
+            el("descCount").textContent = "0";
+            el("createCategoria").innerHTML = '<option value="">Seleccione…</option>';
+            el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
+        }, 0));
+
+        // Alta rápida de solicitante
+        el("btnNuevoSolicitante").addEventListener("click", () => bootstrap.Collapse.getOrCreateInstance(el("nuevoSolicitanteBox")).toggle());
+        el("nsCancelar").addEventListener("click", () => bootstrap.Collapse.getOrCreateInstance(el("nuevoSolicitanteBox")).hide());
+        el("nsGuardar").addEventListener("click", async () => {
+            try {
+                const r = await postForm(cfg.urls.addEmpleado, { Nombre: el("nsNombre").value, Correo: el("nsCorreo").value, Telefono: el("nsTelefono").value });
+                const emp = r.data; state.empleados.push(emp);
+                [["createSolicitante"], ["dtlResponsable"], ["filterSolicitante"]].forEach(([sid]) => {
+                    const o = document.createElement("option"); o.value = emp.id; o.textContent = emp.nombre; el(sid).appendChild(o);
+                });
+                el("createSolicitante").value = emp.id; autofillCorreo();
+                ["nsNombre", "nsCorreo", "nsTelefono"].forEach(i => el(i).value = "");
+                bootstrap.Collapse.getOrCreateInstance(el("nuevoSolicitanteBox")).hide();
+                toast("Solicitante agregado.", "success");
+            } catch (e) { toast(e.message, "danger"); }
         });
 
-        el("createArea").addEventListener("change", onAreaChange);
-        el("createTicketForm").addEventListener("submit", submitCreate);
-        el("createResetBtn").addEventListener("click", () =>
-            document.querySelectorAll("[data-area-field]").forEach(e => e.classList.add("d-none")));
+        // Filtros
+        el("btnApplyFilters").addEventListener("click", loadTickets);
+        el("btnClearFilters").addEventListener("click", () => {
+            ["filterEstatus", "filterClasificacion", "filterPrioridad", "filterSolicitante", "filterTipo"].forEach(i => el(i).value = "");
+            el("filterPeriod").value = "last2Years"; loadTickets();
+        });
 
-        el("btnDtlUpload").addEventListener("click", e => uploadAttachment(e.target.dataset.id));
+        // Detalle
+        el("dtlClasificacion").addEventListener("change", e => loadCategorias(e.target.value, "dtlCategoria", false));
         el("btnDtlSave").addEventListener("click", saveDetail);
-        el("btnDtlInactivate").addEventListener("click", inactivateDetail);
+        el("btnDtlChangeStatus").addEventListener("click", changeStatus);
+        el("btnDtlAssign").addEventListener("click", assignResponsable);
+        el("btnDtlInactivate").addEventListener("click", inactivate);
+        el("btnDtlUpload").addEventListener("click", uploadDetailFiles);
         el("dtlCommentForm").addEventListener("submit", async ev => {
             ev.preventDefault();
-            const ticketId = el("dtlCommentTicketId").value;
+            const id = el("dtlCommentTicketId").value;
             try {
-                await postForm(cfg.urls.addComment, { TicketId: ticketId, Body: el("dtlCommentBody").value });
-                el("dtlCommentBody").value = "";
-                await loadComments(ticketId);
+                await postForm(cfg.urls.addComment, { TicketId: id, Comentario: el("dtlCommentBody").value });
+                el("dtlCommentBody").value = ""; await Promise.all([loadComments(id), loadLog(id)]);
             } catch (e) { toast(e.message, "danger"); }
         });
 
         try {
-            await loadFilterOptions();
-            await loadAreas();
+            await Promise.all([loadPrioridades(), loadEstatus(), loadClasificaciones(), loadEmpleados()]);
         } catch (e) { toast(e.message, "danger"); }
         await loadTickets();
     });

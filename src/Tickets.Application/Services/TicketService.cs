@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Tickets.Application.Abstractions;
 using Tickets.Application.Common;
 using Tickets.Application.Dtos;
@@ -7,194 +8,240 @@ using Tickets.Domain.Enums;
 namespace Tickets.Application.Services;
 
 /// <summary>
-/// Lógica de negocio de tickets. Los controladores solo orquestan; aquí viven las
-/// reglas (validaciones, transiciones de estatus, resolución de nombres).
-/// Sin roles: todos los usuarios tienen acceso completo.
+/// Lógica de negocio de tickets: validaciones, creación, edición (con auditoría en
+/// TicketLog), cambio de estatus (con HistorialEstatus + comentario obligatorio) y
+/// asignación de responsable. Sin roles: acceso completo.
 /// </summary>
-public sealed class TicketService(
+public sealed partial class TicketService(
     ITicketRepository ticketRepository,
     ICatalogRepository catalogRepository,
-    IUserDirectoryRepository userDirectory,
+    IEmpleadoRepository empleadoRepository,
+    IHistorialEstatusRepository historialRepository,
+    ITicketLogRepository logRepository,
     ICurrentUserService currentUser) : ITicketService
 {
-    public async Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default)
-        => await ticketRepository.GetDashboardAsync(new TicketQuery(), ct);
+    private const byte EstatusPorAsignar = 1;
 
-    public async Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
-    {
-        var query = new TicketQuery
-        {
-            Status = filter.Status,
-            RequesterUserCode = NullIfBlank(filter.RequesterUserCode),
-            TicketTypeId = filter.TicketTypeId,
-            DepartmentCode = NullIfBlank(filter.DepartmentCode),
-            ResponsibleUserCode = NullIfBlank(filter.ResponsibleUserCode),
-            CreatedFrom = ResolvePeriod(filter.Period)
-        };
+    public Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default)
+        => ticketRepository.GetDashboardAsync(ct);
 
-        var items = await ticketRepository.GetListAsync(query, ct);
-        await EnrichWithUserNamesAsync(items, ct);
-        return items;
-    }
+    public Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
+        => ticketRepository.GetListAsync(filter, ResolvePeriod(filter.Period), 5000, ct);
 
-    public async Task<TicketListItemDto> GetDetailAsync(int id, CancellationToken ct = default)
-    {
-        var dto = await ticketRepository.GetListItemByIdAsync(id, ct)
-            ?? throw new NotFoundException($"Ticket {id} no encontrado.");
-
-        await EnrichWithUserNamesAsync([dto], ct);
-        return dto;
-    }
-
-    public async Task<FilterOptionsDto> GetFilterOptionsAsync(CancellationToken ct = default)
-    {
-        var visibility = new TicketQuery();
-
-        var requesterCodes = await ticketRepository.GetDistinctRequesterCodesAsync(visibility, ct);
-        var departmentCodes = await ticketRepository.GetDistinctDepartmentCodesAsync(visibility, ct);
-        var responsibleCodes = await ticketRepository.GetDistinctResponsibleCodesAsync(visibility, ct);
-        var types = await catalogRepository.GetActiveTicketTypesAsync(ct);
-
-        var allCodes = requesterCodes.Concat(responsibleCodes).Distinct(StringComparer.OrdinalIgnoreCase);
-        var directory = await LoadDirectoryAsync(allCodes, ct);
-
-        return new FilterOptionsDto
-        {
-            Requesters = requesterCodes
-                .Select(c => new SelectOption { Value = c, Text = ResolveName(directory, c) })
-                .OrderBy(o => o.Text).ToList(),
-            Responsibles = responsibleCodes
-                .Select(c => new SelectOption { Value = c, Text = ResolveName(directory, c) })
-                .OrderBy(o => o.Text).ToList(),
-            Departments = departmentCodes
-                .Select(c => new SelectOption { Value = c, Text = ResolveDepartmentName(directory, c) })
-                .OrderBy(o => o.Text).ToList(),
-            TicketTypes = types
-                .Select(t => new SelectOption { Value = t.Id.ToString(), Text = t.Name })
-                .OrderBy(o => o.Text).ToList()
-        };
-    }
+    public async Task<TicketDetailDto> GetDetailAsync(int id, CancellationToken ct = default)
+        => await ticketRepository.GetDetailAsync(id, ct)
+           ?? throw new NotFoundException($"Ticket {id} no encontrado.");
 
     public async Task<int> CreateAsync(CreateTicketRequest request, CancellationToken ct = default)
     {
-        if (request.TicketTypeId <= 0)
-            throw new ValidationException("Debe seleccionar un tipo de solicitud.");
-        if (string.IsNullOrWhiteSpace(request.Description))
-            throw new ValidationException("La descripción es obligatoria.");
-
-        var type = await catalogRepository.GetTicketTypeAsync(request.TicketTypeId, ct)
-            ?? throw new ValidationException("El tipo de solicitud no existe.");
-
-        // Reglas de campos condicionales por área (antes dispersas entre JS y BD).
-        if (string.Equals(type.AreaCode, "CAL", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(request.QualityDepartment))
-                throw new ValidationException("El departamento de calidad es obligatorio para el área de Calidad.");
-            if (request.Amount is null)
-                throw new ValidationException("El monto es obligatorio para el área de Calidad.");
-            if (request.Quantity is null)
-                throw new ValidationException("La cantidad es obligatoria para el área de Calidad.");
-        }
-        else if (string.Equals(type.AreaCode, "PD", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrWhiteSpace(request.Machine))
-                throw new ValidationException("La máquina es obligatoria para el área de Producción.");
-        }
+        var (categoria, _) = await ValidateCoreAsync(
+            request.SolicitanteId, request.ClasificacionId, request.CategoriaId,
+            request.PrioridadId, request.Descripcion, request.Correo, request.Celular,
+            request.TipoSolicitud, ct);
 
         var ticket = new Ticket
         {
-            TicketTypeId = type.Id,
-            Status = TicketStatus.Open,
-            RequesterUserCode = currentUser.UserCode,
-            DepartmentCode = currentUser.DepartmentCode,
-            ResponsibleUserCode = type.DefaultResponsibleUserCode,
-            Description = request.Description.Trim(),
-            Category = string.IsNullOrWhiteSpace(request.Category) ? "S" : request.Category,
-            QualityDepartment = request.QualityDepartment,
-            Machine = request.Machine,
-            Amount = request.Amount,
-            Quantity = request.Quantity,
-            RegisteredTime = TimeOnly.FromDateTime(DateTime.Now),
+            SolicitanteId = request.SolicitanteId,
+            Correo = Trim(request.Correo),
+            Celular = Trim(request.Celular),
+            TipoSolicitud = request.TipoSolicitud,
+            ClasificacionId = request.ClasificacionId,
+            CategoriaId = categoria.Id,
+            PrioridadId = request.PrioridadId,
+            EstatusId = EstatusPorAsignar,
+            Descripcion = request.Descripcion.Trim(),
             CreatedAt = DateTime.UtcNow,
             IsActive = true
         };
 
-        return await ticketRepository.InsertAsync(ticket, ct);
+        var id = await ticketRepository.InsertAsync(ticket, ct);
+
+        // Bitácora de estatus inicial + log de creación.
+        await historialRepository.InsertAsync(new HistorialEstatus
+        {
+            TicketId = id,
+            EstatusAnteriorId = null,
+            EstatusNuevoId = EstatusPorAsignar,
+            Comentario = "Ticket creado.",
+            UsuarioCodigo = currentUser.UserCode,
+            Fecha = DateTime.UtcNow
+        }, ct);
+
+        await LogAsync(id, "Creacion", "Alta del ticket", null, $"#{id}", ct);
+        return id;
     }
 
-    public async Task UpdateStatusAsync(UpdateTicketStatusRequest request, CancellationToken ct = default)
+    public async Task UpdateAsync(UpdateTicketRequest request, CancellationToken ct = default)
     {
         var ticket = await ticketRepository.GetByIdAsync(request.TicketId, ct)
             ?? throw new NotFoundException($"Ticket {request.TicketId} no encontrado.");
 
-        DateTime? closedAt = null;
-        TimeOnly? closedTime = null;
-        DateOnly? estimatedClose = null;
+        var (categoria, _) = await ValidateCoreAsync(
+            ticket.SolicitanteId, request.ClasificacionId, request.CategoriaId,
+            request.PrioridadId, request.Descripcion, request.Correo, request.Celular,
+            request.TipoSolicitud, ct);
 
-        switch (request.Status)
+        // Detectar cambios para auditar campo por campo.
+        var cambios = new List<(string Campo, string? Antes, string? Ahora)>();
+        void Track(string campo, string? antes, string? ahora)
         {
-            case TicketStatus.Closed:
-                closedAt = DateTime.UtcNow;
-                closedTime = TimeOnly.FromDateTime(DateTime.Now);
-                break;
-            case TicketStatus.InProgress:
-                if (request.EstimatedCloseDate is null)
-                    throw new ValidationException("Debe indicar la fecha estimada de cierre para poner el ticket En Proceso.");
-                estimatedClose = request.EstimatedCloseDate;
-                break;
+            if (!string.Equals(antes ?? "", ahora ?? "", StringComparison.Ordinal))
+                cambios.Add((campo, antes, ahora));
         }
 
-        var ok = await ticketRepository.UpdateStatusAsync(
-            ticket.Id, request.Status, closedAt, closedTime, estimatedClose, ct);
+        Track("Correo", ticket.Correo, Trim(request.Correo));
+        Track("Celular", ticket.Celular, Trim(request.Celular));
+        Track("TipoSolicitud", ticket.TipoSolicitud.ToString(), request.TipoSolicitud.ToString());
+        Track("ClasificacionId", ticket.ClasificacionId.ToString(), request.ClasificacionId.ToString());
+        Track("CategoriaId", ticket.CategoriaId.ToString(), categoria.Id.ToString());
+        Track("PrioridadId", ticket.PrioridadId.ToString(), request.PrioridadId.ToString());
+        Track("Descripcion", ticket.Descripcion, request.Descripcion.Trim());
 
-        if (!ok) throw new ValidationException("No se pudo actualizar el estatus del ticket.");
+        if (cambios.Count == 0) return;
+
+        ticket.Correo = Trim(request.Correo);
+        ticket.Celular = Trim(request.Celular);
+        ticket.TipoSolicitud = request.TipoSolicitud;
+        ticket.ClasificacionId = request.ClasificacionId;
+        ticket.CategoriaId = categoria.Id;
+        ticket.PrioridadId = request.PrioridadId;
+        ticket.Descripcion = request.Descripcion.Trim();
+
+        var ok = await ticketRepository.UpdateFieldsAsync(ticket, ct);
+        if (!ok) throw new ValidationException("No se pudo actualizar el ticket.");
+
+        foreach (var c in cambios)
+            await LogAsync(ticket.Id, "EdicionCampo", c.Campo, c.Antes, c.Ahora, ct);
     }
 
-    public async Task UpdateEstimatedCloseDateAsync(UpdateEstimatedCloseDateRequest request, CancellationToken ct = default)
+    public async Task ChangeStatusAsync(ChangeStatusRequest request, CancellationToken ct = default)
     {
-        await EnsureExistsAsync(request.TicketId, ct);
-        var ok = await ticketRepository.UpdateEstimatedCloseDateAsync(request.TicketId, request.EstimatedCloseDate, ct);
-        if (!ok) throw new ValidationException("No se pudo actualizar la fecha estimada de cierre.");
+        if (string.IsNullOrWhiteSpace(request.Comentario))
+            throw new ValidationException("El comentario es obligatorio al cambiar de estatus.");
+
+        var ticket = await ticketRepository.GetByIdAsync(request.TicketId, ct)
+            ?? throw new NotFoundException($"Ticket {request.TicketId} no encontrado.");
+
+        var nuevoEstatus = await catalogRepository.GetEstatusAsync(request.EstatusId, ct)
+            ?? throw new ValidationException("El estatus seleccionado no existe.");
+
+        if (ticket.EstatusId == nuevoEstatus.Id)
+            throw new ValidationException("El ticket ya se encuentra en ese estatus.");
+
+        var anteriorId = ticket.EstatusId;
+        var closedAt = nuevoEstatus.EsFinal ? DateTime.UtcNow : (DateTime?)null;
+
+        var ok = await ticketRepository.UpdateEstatusAsync(ticket.Id, nuevoEstatus.Id, closedAt, ct);
+        if (!ok) throw new ValidationException("No se pudo actualizar el estatus.");
+
+        // Solo HistorialEstatus (no se duplica en TicketLog).
+        await historialRepository.InsertAsync(new HistorialEstatus
+        {
+            TicketId = ticket.Id,
+            EstatusAnteriorId = anteriorId,
+            EstatusNuevoId = nuevoEstatus.Id,
+            Comentario = request.Comentario.Trim(),
+            UsuarioCodigo = currentUser.UserCode,
+            Fecha = DateTime.UtcNow
+        }, ct);
     }
 
-    public async Task UpdateResponsibleAsync(UpdateResponsibleRequest request, CancellationToken ct = default)
+    public async Task AssignResponsableAsync(AssignResponsableRequest request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.ResponsibleUserCode))
-            throw new ValidationException("El responsable no es válido.");
+        var ticket = await ticketRepository.GetByIdAsync(request.TicketId, ct)
+            ?? throw new NotFoundException($"Ticket {request.TicketId} no encontrado.");
 
-        await EnsureExistsAsync(request.TicketId, ct);
-        var ok = await ticketRepository.UpdateResponsibleAsync(request.TicketId, request.ResponsibleUserCode.Trim(), ct);
-        if (!ok) throw new ValidationException("No se pudo actualizar el responsable.");
-    }
+        var nuevo = await empleadoRepository.GetByIdAsync(request.ResponsableEmpleadoId, ct)
+            ?? throw new ValidationException("El responsable seleccionado no existe.");
 
-    public async Task UpdateCategoryAsync(UpdateCategoryRequest request, CancellationToken ct = default)
-    {
-        await EnsureExistsAsync(request.TicketId, ct);
-        var ok = await ticketRepository.UpdateCategoryAsync(request.TicketId, request.Category, ct);
-        if (!ok) throw new ValidationException("No se pudo actualizar el tipo de ticket.");
+        var anteriorNombre = ticket.ResponsableEmpleadoId is int prevId
+            ? (await empleadoRepository.GetByIdAsync(prevId, ct))?.Nombre
+            : null;
+
+        var ok = await ticketRepository.UpdateResponsableAsync(ticket.Id, nuevo.Id, ct);
+        if (!ok) throw new ValidationException("No se pudo asignar el responsable.");
+
+        await LogAsync(ticket.Id, "AsignaResponsable", "Cambio de responsable", anteriorNombre, nuevo.Nombre, ct);
     }
 
     public async Task SetInactiveAsync(int id, CancellationToken ct = default)
     {
-        await EnsureExistsAsync(id, ct);
-        var ok = await ticketRepository.SetInactiveAsync(id, ct);
-        if (!ok) throw new ValidationException("No se pudo inactivar el ticket.");
-    }
-
-    public async Task SetAttachmentAsync(int id, string fileName, CancellationToken ct = default)
-    {
-        await EnsureExistsAsync(id, ct);
-        var ok = await ticketRepository.SetAttachmentAsync(id, fileName, ct);
-        if (!ok) throw new ValidationException("No se pudo asociar el archivo adjunto.");
-    }
-
-    // ---------- Helpers privados ----------
-
-    private async Task EnsureExistsAsync(int id, CancellationToken ct)
-    {
         _ = await ticketRepository.GetByIdAsync(id, ct)
             ?? throw new NotFoundException($"Ticket {id} no encontrado.");
+
+        var ok = await ticketRepository.SetInactiveAsync(id, ct);
+        if (!ok) throw new ValidationException("No se pudo inactivar el ticket.");
+
+        await LogAsync(id, "Inactivacion", "El ticket fue inactivado", null, null, ct);
     }
+
+    public Task<IReadOnlyList<HistorialEstatusDto>> GetHistorialAsync(int ticketId, CancellationToken ct = default)
+        => historialRepository.GetByTicketAsync(ticketId, ct);
+
+    public async Task<IReadOnlyList<TicketLogDto>> GetLogAsync(int ticketId, CancellationToken ct = default)
+    {
+        var entries = await logRepository.GetByTicketAsync(ticketId, ct);
+        return entries.Select(e => new TicketLogDto
+        {
+            Id = e.Id,
+            Accion = e.Accion,
+            Descripcion = e.Descripcion,
+            ValorAnterior = e.ValorAnterior,
+            ValorNuevo = e.ValorNuevo,
+            UsuarioCodigo = e.UsuarioCodigo,
+            FechaHora = e.FechaHora
+        }).ToList();
+    }
+
+    // ---------- Helpers ----------
+
+    private async Task<(Categoria Categoria, Empleado Solicitante)> ValidateCoreAsync(
+        int solicitanteId, int clasificacionId, int categoriaId, byte prioridadId,
+        string descripcion, string? correo, string? celular, TipoSolicitud tipo, CancellationToken ct)
+    {
+        if (!Enum.IsDefined(tipo))
+            throw new ValidationException("Tipo de solicitud no válido.");
+        if (string.IsNullOrWhiteSpace(descripcion))
+            throw new ValidationException("La descripción es obligatoria.");
+        if (descripcion.Length > 2000)
+            throw new ValidationException("La descripción no puede exceder 2000 caracteres.");
+
+        var solicitante = await empleadoRepository.GetByIdAsync(solicitanteId, ct)
+            ?? throw new ValidationException("El solicitante no existe.");
+
+        _ = await catalogRepository.GetClasificacionAsync(clasificacionId, ct)
+            ?? throw new ValidationException("La clasificación no existe.");
+
+        var categoria = await catalogRepository.GetCategoriaAsync(categoriaId, ct)
+            ?? throw new ValidationException("La categoría no existe.");
+        if (categoria.ClasificacionId != clasificacionId)
+            throw new ValidationException("La categoría no corresponde a la clasificación seleccionada.");
+
+        _ = await catalogRepository.GetPrioridadAsync(prioridadId, ct)
+            ?? throw new ValidationException("La prioridad no existe.");
+
+        if (!string.IsNullOrWhiteSpace(correo) && !EmailRegex().IsMatch(correo.Trim()))
+            throw new ValidationException("El correo no tiene un formato válido.");
+
+        if (!string.IsNullOrWhiteSpace(celular) && !CelularRegex().IsMatch(celular.Trim()))
+            throw new ValidationException("El celular debe tener 10 dígitos.");
+
+        return (categoria, solicitante);
+    }
+
+    private Task LogAsync(int ticketId, string accion, string? descripcion, string? antes, string? ahora, CancellationToken ct)
+        => logRepository.InsertAsync(new TicketLogEntry
+        {
+            TicketId = ticketId,
+            Accion = accion,
+            Descripcion = descripcion,
+            ValorAnterior = antes,
+            ValorNuevo = ahora,
+            UsuarioCodigo = currentUser.UserCode,
+            FechaHora = DateTime.UtcNow
+        }, ct);
+
+    private static string? Trim(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
     private static DateTime? ResolvePeriod(string? period) => period switch
     {
@@ -207,57 +254,9 @@ public sealed class TicketService(
         _ => DateTime.Now.AddYears(-2)
     };
 
-    private async Task EnrichWithUserNamesAsync(IReadOnlyList<TicketListItemDto> items, CancellationToken ct)
-    {
-        if (items.Count == 0) return;
+    [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
+    private static partial Regex EmailRegex();
 
-        var codes = items.SelectMany(i => new[] { i.RequesterUserCode, i.ResponsibleUserCode })
-            .Where(c => !string.IsNullOrWhiteSpace(c))!
-            .Cast<string>();
-
-        var directory = await LoadDirectoryAsync(codes, ct);
-
-        foreach (var item in items)
-        {
-            item.RequesterName = ResolveName(directory, item.RequesterUserCode);
-            item.ResponsibleName = string.IsNullOrWhiteSpace(item.ResponsibleUserCode)
-                ? null : ResolveName(directory, item.ResponsibleUserCode!);
-
-            // El nombre del departamento se toma del solicitante (VL_Usuarios ya trae DepName vía OOCR).
-            if (directory.TryGetValue(item.RequesterUserCode, out var requester)
-                && !string.IsNullOrWhiteSpace(requester.DepartmentName))
-            {
-                item.DepartmentName = requester.DepartmentName;
-            }
-            else if (string.IsNullOrWhiteSpace(item.DepartmentName))
-            {
-                item.DepartmentName = item.DepartmentCode;
-            }
-        }
-    }
-
-    private async Task<Dictionary<string, DirectoryUser>> LoadDirectoryAsync(IEnumerable<string> codes, CancellationToken ct)
-    {
-        var distinct = codes.Where(c => !string.IsNullOrWhiteSpace(c))
-            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
-        if (distinct.Count == 0) return new(StringComparer.OrdinalIgnoreCase);
-
-        var users = await userDirectory.GetByCodesAsync(distinct, ct);
-        var map = new Dictionary<string, DirectoryUser>(StringComparer.OrdinalIgnoreCase);
-        foreach (var u in users) map[u.Code] = u;
-        return map;
-    }
-
-    private static string ResolveName(IReadOnlyDictionary<string, DirectoryUser> directory, string code)
-        => directory.TryGetValue(code, out var u) && !string.IsNullOrWhiteSpace(u.Name) ? u.Name : code;
-
-    private static string ResolveDepartmentName(IReadOnlyDictionary<string, DirectoryUser> directory, string code)
-    {
-        var match = directory.Values.FirstOrDefault(u =>
-            string.Equals(u.DepartmentCode, code, StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrWhiteSpace(u.DepartmentName));
-        return match?.DepartmentName ?? code;
-    }
-
-    private static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+    [GeneratedRegex(@"^\d{10}$")]
+    private static partial Regex CelularRegex();
 }

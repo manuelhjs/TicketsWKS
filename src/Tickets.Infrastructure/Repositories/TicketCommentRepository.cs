@@ -10,7 +10,7 @@ public sealed class TicketCommentRepository(ISqlConnectionFactory connectionFact
     public async Task<IReadOnlyList<TicketComment>> GetByTicketAsync(int ticketId, CancellationToken ct = default)
     {
         const string sql = """
-            SELECT Id, TicketId, AuthorUserCode, Body, CreatedAt
+            SELECT Id, TicketId, AutorCodigo, Comentario, CreatedAt
             FROM dbo.TicketComments
             WHERE TicketId = @TicketId
             ORDER BY CreatedAt;
@@ -24,8 +24,8 @@ public sealed class TicketCommentRepository(ISqlConnectionFactory connectionFact
     public async Task<int> InsertAsync(TicketComment comment, CancellationToken ct = default)
     {
         const string sql = """
-            INSERT INTO dbo.TicketComments (TicketId, AuthorUserCode, Body, CreatedAt)
-            VALUES (@TicketId, @AuthorUserCode, @Body, @CreatedAt);
+            INSERT INTO dbo.TicketComments (TicketId, AutorCodigo, Comentario, CreatedAt)
+            VALUES (@TicketId, @AutorCodigo, @Comentario, @CreatedAt);
             SELECT CAST(SCOPE_IDENTITY() AS INT);
             """;
 

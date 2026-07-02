@@ -85,22 +85,34 @@ dotnet test
 | Notificaciones por correo | **Omitidas** en esta versión (el legacy enviaba correos desde la entidad). |
 | Organización | Multi-proyecto por capas. |
 
+## Modelo de datos (formulario de tickets)
+
+Tablas del módulo (en `B1_PROA_MX_V2`): `Empleados`, `Clasificacion`, `Categoria` (FK→Clasificacion), `Prioridad`, `Estatus`, `Tickets`, `TicketComments`, `HistorialEstatus`, `Adjuntos`, `TicketLog`.
+
+- **Solicitante** → `Empleados` (alta rápida desde el formulario; Correo/Teléfono opcionales). El usuario actual se auto-provisiona como Empleado y queda preseleccionado.
+- **Clasificación / Categoría** → catálogos **editables** con opción “Otro” que da de alta el valor (Categoría depende de Clasificación en cascada).
+- **Prioridad / Estatus** → catálogos. Estatus: 12 valores (Por asignar … Finalizado).
+- **Auditoría (separada):** `HistorialEstatus` registra cada cambio de estatus (**comentario obligatorio**); `TicketLog` registra el resto de acciones (creación, edición campo a campo con valor anterior/nuevo, asignación de responsable, adjuntos, comentarios). El log es de **solo inserción**.
+- **Adjuntos:** múltiples por ticket. Límite **10 MB/archivo, 5 archivos**; tipos permitidos PDF/JPG/PNG/PPT(X)/DOC(X)/XLS(X)/TXT/CSV. Validado en **backend** (`AttachmentRules`) además del cliente; si no se puede adjuntar, leyenda alterna (Google Drive / plataformas.soporte@impulsoraint.com).
+
+> El script `db/TicketsDb_Full.sql` **recrea** (drop + create) los objetos del módulo, incluidas las tablas obsoletas del diseño anterior (`Areas`, `TicketTypes`, `TicketStatuses`).
+
 ## Vista principal (UI)
 
-- **Sin roles:** todos los usuarios tienen acceso completo (ver/crear/editar/cambiar estatus de todos los tickets).
-- **Cabecera de usuario:** nombre completo, **nombre** del departamento (no el código) y puesto. Se resuelven del directorio SAP (vista `dbo.VL_Usuarios`, que ya expone `DepName` vía `OOCR` y `PuestoTexto`) por código de usuario; la configuración `CurrentUser` es solo respaldo.
-- **Creación:** formulario **embebido** en la pantalla, ubicado antes de los filtros y **visible por defecto** (colapsable). Mantiene las validaciones (área CAL exige depto. calidad/monto/cantidad; área PD exige máquina).
-- **Edición:** sin edición inline. Al hacer **clic en una fila** (o en el botón **Ver** de la última columna) se abre un **modal de detalle** con todos los campos, la sección de gestión (estatus, responsable, fecha estimada, tipo, inactivar), comentarios y adjuntos.
-- **Tabla:** **DataTables** (Bootstrap 5) con paginación, búsqueda y ordenamiento por columna.
-  - **Client-side sobre el resultado ya filtrado en servidor**: los filtros (estatus, período, solicitante, clasificación, departamento, responsable) se resuelven en SQL parametrizado; DataTables hace búsqueda/orden/paginación en el navegador sobre ese subconjunto (tope `TicketQuery.MaxRows` = 5000). Conviene por el volumen esperado tras los filtros; si un filtro superara ~5–10k filas de forma habitual, migrar a server-side (`serverSide: true` + endpoint paginado).
+- **Sin roles:** todos los usuarios tienen acceso completo.
+- **Cabecera de usuario:** nombre completo, **nombre** del departamento y puesto, resueltos de `dbo.VL_Usuarios` (que ya expone `DepName` vía `OOCR` y `PuestoTexto`); `CurrentUser` es respaldo.
+- **Creación:** formulario **embebido, visible por defecto**, antes de los filtros. Campos: solicitante, correo (autocompletado/editable), celular (10 dígitos), tipo de solicitud (Incidencia/Requerimiento con tooltip), prioridad (Alto/Medio/Bajo con SLA en tooltip), clasificación, categoría (cascada), descripción (máx. 2000, contador), evidencias. Leyendas fijas de horario y evaluación de prioridad. Validaciones en cliente **y backend**.
+- **Detalle/edición:** clic en fila o botón **Ver** abre un modal con pestañas: **Detalle** (edita campos + cambia estatus con comentario obligatorio + asigna responsable + adjuntos + inactivar), **Comentarios**, **Historial de estatus**, **Bitácora** (TicketLog).
+- **Tabla:** **DataTables** (Bootstrap 5) — paginación/búsqueda/orden client-side sobre el resultado ya filtrado en SQL (tope 5000 filas; migrar a server-side si crece).
 
 ## Correspondencia legacy → nuevo
 
 | Legacy (PROAMASTER) | Nuevo |
 |---|---|
-| `@GP_TICKETS` | `dbo.Tickets` |
-| `@GP_ASIGNACIONTP` | `dbo.TicketTypes` (+ `dbo.Areas`) |
+| `@GP_TICKETS` | `dbo.Tickets` (rediseñada) |
+| `@GP_ASIGNACIONTP` / áreas | `dbo.Clasificacion` + `dbo.Categoria` |
 | `@GP_CHAT_TICKETS` | `dbo.TicketComments` |
+| — (nuevo) | `Empleados`, `Prioridad`, `Estatus`, `HistorialEstatus`, `Adjuntos`, `TicketLog` |
 | `VL_Usuarios` / `OOCR` (SAP) | Externas (solo lectura vía `IUserDirectoryRepository`) |
 | `Ticket.cs` (890 líneas: entidad+datos+negocio+correo) | `Domain.Ticket` + `TicketService` + `TicketRepository` |
 | `BD.cs` (ADO.NET) | Dapper + `SqlConnectionFactory` |
@@ -113,7 +125,7 @@ dotnet test
 | **Inyección SQL** por interpolación de strings con datos de usuario | Dapper 100% parametrizado (`DynamicParameters`) |
 | PK `Code` (varchar) generada con `SELECT MAX+1` en la app (condición de carrera, tope "≤327→328") | `Id INT IDENTITY` |
 | Horas como `int` (minutos), fechas/booleanos como `varchar` (`'A'/'IN'`) | `TIME`, `DATETIME2`, `DATE`, `BIT` |
-| Estatus como magic strings `'A'/'C'/'EP'` | Catálogo `TicketStatuses` + enum `TicketStatus` |
+| Estatus como magic strings `'A'/'C'/'EP'` | Catálogo `Estatus` con FK |
 | Prefijos `@`, `U_`, `VL_`; mezcla español/inglés; `U_DBOrigen` vs `U_BDOrigen` (bug) | Naming limpio y consistente, `Id` como PK |
 | Modelo gordo (Active Record): datos+negocio+UI+correo en una clase | Capas separadas (Domain/Application/Infrastructure/Web) |
 | Métodos estáticos, `new SqlConnection`/`new Mail` inline → no testeable | DI + interfaces (con pruebas unitarias) |

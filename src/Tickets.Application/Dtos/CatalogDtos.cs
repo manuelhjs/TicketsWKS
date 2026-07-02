@@ -1,11 +1,26 @@
 namespace Tickets.Application.Dtos;
 
-/// <summary>Tipo de solicitud expuesto al front-end (para el modal de alta).</summary>
-public sealed class TicketTypeDto
+public sealed class PrioridadDto
 {
-    public int Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public int AreaId { get; set; }
-    public string? AreaCode { get; set; }
-    public string? DefaultResponsibleUserCode { get; set; }
+    public byte Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public string Descripcion { get; set; } = string.Empty;
+}
+
+public sealed class EstatusDto
+{
+    public byte Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public bool EsFinal { get; set; }
+}
+
+public sealed class CreateClasificacionRequest
+{
+    public string Nombre { get; set; } = string.Empty;
+}
+
+public sealed class CreateCategoriaRequest
+{
+    public int ClasificacionId { get; set; }
+    public string Nombre { get; set; } = string.Empty;
 }

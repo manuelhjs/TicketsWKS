@@ -8,6 +8,7 @@ namespace Tickets.Application.Services;
 public sealed class TicketCommentService(
     ITicketCommentRepository commentRepository,
     ITicketRepository ticketRepository,
+    ITicketLogRepository logRepository,
     IUserDirectoryRepository userDirectory,
     ICurrentUserService currentUser) : ITicketCommentService
 {
@@ -16,22 +17,22 @@ public sealed class TicketCommentService(
         var comments = await commentRepository.GetByTicketAsync(ticketId, ct);
         if (comments.Count == 0) return [];
 
-        var directory = await LoadNamesAsync(comments.Select(c => c.AuthorUserCode), ct);
+        var names = await LoadNamesAsync(comments.Select(c => c.AutorCodigo), ct);
 
         return comments.Select(c => new TicketCommentDto
         {
             Id = c.Id,
             TicketId = c.TicketId,
-            AuthorUserCode = c.AuthorUserCode,
-            AuthorName = directory.TryGetValue(c.AuthorUserCode, out var name) ? name : c.AuthorUserCode,
-            Body = c.Body,
+            AutorCodigo = c.AutorCodigo,
+            AutorNombre = names.TryGetValue(c.AutorCodigo, out var name) ? name : c.AutorCodigo,
+            Comentario = c.Comentario,
             CreatedAt = c.CreatedAt
         }).ToList();
     }
 
     public async Task<int> AddAsync(CreateCommentRequest request, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(request.Body))
+        if (string.IsNullOrWhiteSpace(request.Comentario))
             throw new ValidationException("El comentario no puede estar vacío.");
 
         _ = await ticketRepository.GetByIdAsync(request.TicketId, ct)
@@ -40,12 +41,23 @@ public sealed class TicketCommentService(
         var comment = new TicketComment
         {
             TicketId = request.TicketId,
-            AuthorUserCode = currentUser.UserCode,
-            Body = request.Body.Trim(),
+            AutorCodigo = currentUser.UserCode,
+            Comentario = request.Comentario.Trim(),
             CreatedAt = DateTime.UtcNow
         };
 
-        return await commentRepository.InsertAsync(comment, ct);
+        var id = await commentRepository.InsertAsync(comment, ct);
+
+        await logRepository.InsertAsync(new TicketLogEntry
+        {
+            TicketId = request.TicketId,
+            Accion = "Comentario",
+            Descripcion = "Comentario agregado",
+            UsuarioCodigo = currentUser.UserCode,
+            FechaHora = DateTime.UtcNow
+        }, ct);
+
+        return id;
     }
 
     private async Task<Dictionary<string, string>> LoadNamesAsync(IEnumerable<string> codes, CancellationToken ct)

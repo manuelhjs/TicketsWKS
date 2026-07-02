@@ -1,39 +1,17 @@
 using Tickets.Application.Dtos;
 using Tickets.Domain.Entities;
-using Tickets.Domain.Enums;
 
 namespace Tickets.Application.Abstractions;
 
 public interface ITicketRepository
 {
-    /// <summary>Lista filtrada (sin paginación de servidor; el tope es query.MaxRows).</summary>
-    Task<IReadOnlyList<TicketListItemDto>> GetListAsync(TicketQuery query, CancellationToken ct = default);
-
-    /// <summary>Detalle de un ticket como read model (para el modal). Null si no existe o está inactivo.</summary>
-    Task<TicketListItemDto?> GetListItemByIdAsync(int id, CancellationToken ct = default);
-
-    Task<DashboardDto> GetDashboardAsync(TicketQuery query, CancellationToken ct = default);
-
+    Task<IReadOnlyList<TicketListItemDto>> GetListAsync(TicketFilterDto filter, DateTime? createdFrom, int maxRows, CancellationToken ct = default);
+    Task<TicketDetailDto?> GetDetailAsync(int id, CancellationToken ct = default);
     Task<Ticket?> GetByIdAsync(int id, CancellationToken ct = default);
-
     Task<int> InsertAsync(Ticket ticket, CancellationToken ct = default);
-
-    Task<bool> UpdateStatusAsync(
-        int id, TicketStatus status, DateTime? closedAt, TimeOnly? closedTime,
-        DateOnly? estimatedCloseDate, CancellationToken ct = default);
-
-    Task<bool> UpdateEstimatedCloseDateAsync(int id, DateOnly date, CancellationToken ct = default);
-
-    Task<bool> UpdateResponsibleAsync(int id, string responsibleUserCode, CancellationToken ct = default);
-
-    Task<bool> UpdateCategoryAsync(int id, string category, CancellationToken ct = default);
-
+    Task<bool> UpdateFieldsAsync(Ticket ticket, CancellationToken ct = default);
+    Task<bool> UpdateEstatusAsync(int id, byte estatusId, DateTime? closedAt, CancellationToken ct = default);
+    Task<bool> UpdateResponsableAsync(int id, int responsableEmpleadoId, CancellationToken ct = default);
     Task<bool> SetInactiveAsync(int id, CancellationToken ct = default);
-
-    Task<bool> SetAttachmentAsync(int id, string fileName, CancellationToken ct = default);
-
-    /// <summary>Códigos distintos (solicitantes / departamentos / responsables) presentes en tickets visibles.</summary>
-    Task<IReadOnlyList<string>> GetDistinctRequesterCodesAsync(TicketQuery visibility, CancellationToken ct = default);
-    Task<IReadOnlyList<string>> GetDistinctDepartmentCodesAsync(TicketQuery visibility, CancellationToken ct = default);
-    Task<IReadOnlyList<string>> GetDistinctResponsibleCodesAsync(TicketQuery visibility, CancellationToken ct = default);
+    Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default);
 }

@@ -1,182 +1,236 @@
 /* =====================================================================
-   Módulo de Tickets — Script COMPLETO y portable (SQL Server)
-   Esquema + datos semilla. Idempotente: se puede ejecutar varias veces.
+   Módulo de Tickets — Script COMPLETO (SQL Server)
+   Esquema + datos semilla. Recrea los objetos del módulo (drop + create).
 
-   Cómo ejecutar en otro servidor:
-   - Recomendado: abrir en SSMS / Azure Data Studio y ejecutar (F5).
-   - O por línea de comandos preservando UTF-8 (por los acentos):
+   Las tablas viven DENTRO de la base de SAP B1_PROA_MX_V2 (destino de la
+   cadena de conexión TicketsDb). Para una base independiente, cambia el
+   bloque USE por: IF DB_ID('TicketsDb') IS NULL CREATE DATABASE TicketsDb; USE TicketsDb;
+
+   Cómo ejecutar: SSMS / Azure Data Studio (F5), o
        sqlcmd -S TU_SERVIDOR -f 65001 -i TicketsDb_Full.sql
-     (con autenticación SQL agrega: -U usuario -P password)
 
-   Las tablas se crean DENTRO de la base de SAP B1_PROA_MX_V2 (junto a las
-   tablas del sistema), que es a donde apunta la cadena de conexión TicketsDb.
-   Si prefieres una base independiente, reemplaza el bloque 1 por:
-       IF DB_ID('TicketsDb') IS NULL CREATE DATABASE TicketsDb;
-       GO
-       USE TicketsDb;
-       GO
-   y ajusta el Initial Catalog de la cadena de conexión al mismo nombre.
+   ADVERTENCIA: este script ELIMINA y recrea las tablas del módulo
+   (incluye datos). Úsalo en ambientes de desarrollo/pruebas.
    ===================================================================== */
 
-/* ---------- 1. Base de datos destino ---------- */
 USE B1_PROA_MX_V2;
 GO
 
-/* ---------- 2. Catálogo de estatus ----------
-   Reemplaza los magic strings 'A' / 'EP' / 'C' del legacy.
-   Los Id coinciden con el enum TicketStatus del código C#. */
-IF OBJECT_ID('dbo.TicketStatuses', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.TicketStatuses
-    (
-        Id      TINYINT       NOT NULL CONSTRAINT PK_TicketStatuses PRIMARY KEY,
-        Code    NVARCHAR(10)  NOT NULL,
-        Name    NVARCHAR(50)  NOT NULL,
-        CONSTRAINT UQ_TicketStatuses_Code UNIQUE (Code)
-    );
-END
+/* ---------- 1. Limpieza: eliminar objetos del módulo (hijos -> padres) ----------
+   Incluye tablas obsoletas de versiones previas (Areas, TicketTypes, TicketStatuses). */
+DROP TABLE IF EXISTS dbo.TicketLog;
+DROP TABLE IF EXISTS dbo.Adjuntos;
+DROP TABLE IF EXISTS dbo.HistorialEstatus;
+DROP TABLE IF EXISTS dbo.TicketComments;
+DROP TABLE IF EXISTS dbo.Tickets;
+DROP TABLE IF EXISTS dbo.Categoria;
+DROP TABLE IF EXISTS dbo.Clasificacion;
+DROP TABLE IF EXISTS dbo.Prioridad;
+DROP TABLE IF EXISTS dbo.Estatus;
+DROP TABLE IF EXISTS dbo.Empleados;
+-- Obsoletas (diseño anterior)
+DROP TABLE IF EXISTS dbo.TicketTypes;
+DROP TABLE IF EXISTS dbo.Areas;
+DROP TABLE IF EXISTS dbo.TicketStatuses;
 GO
 
-/* ---------- 3. Áreas (antes VW_GP_AREAS) ---------- */
-IF OBJECT_ID('dbo.Areas', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.Areas
-    (
-        Id        INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Areas PRIMARY KEY,
-        Code      NVARCHAR(20)  NOT NULL,
-        Name      NVARCHAR(100) NOT NULL,
-        IsActive  BIT           NOT NULL CONSTRAINT DF_Areas_IsActive DEFAULT (1),
-        CreatedAt DATETIME2(0)  NOT NULL CONSTRAINT DF_Areas_CreatedAt DEFAULT (SYSUTCDATETIME()),
-        CONSTRAINT UQ_Areas_Code UNIQUE (Code)
-    );
-END
+/* ---------- 2. Empleados (NUEVA) — fuente de Solicitante/Responsable ---------- */
+CREATE TABLE dbo.Empleados
+(
+    Id        INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Empleados PRIMARY KEY,
+    Codigo    NVARCHAR(50)  NULL,           -- enlace opcional a usuario SAP (para preselección)
+    Nombre    NVARCHAR(200) NOT NULL,
+    Correo    NVARCHAR(256) NULL,           -- opcional
+    Telefono  NVARCHAR(20)  NULL,           -- opcional
+    Activo    BIT           NOT NULL CONSTRAINT DF_Empleados_Activo DEFAULT (1),
+    FechaAlta DATETIME2(0)  NOT NULL CONSTRAINT DF_Empleados_FechaAlta DEFAULT (SYSUTCDATETIME())
+);
+CREATE INDEX IX_Empleados_Codigo ON dbo.Empleados (Codigo);
+CREATE INDEX IX_Empleados_Nombre ON dbo.Empleados (Nombre);
 GO
 
-/* ---------- 4. Tipos de solicitud (antes @GP_ASIGNACIONTP) ---------- */
-IF OBJECT_ID('dbo.TicketTypes', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.TicketTypes
-    (
-        Id                         INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_TicketTypes PRIMARY KEY,
-        AreaId                     INT           NOT NULL,
-        Name                       NVARCHAR(150) NOT NULL,
-        DefaultResponsibleUserCode NVARCHAR(50)  NULL,   -- referencia externa a usuario SAP
-        IsActive                   BIT           NOT NULL CONSTRAINT DF_TicketTypes_IsActive DEFAULT (1),
-        CreatedAt                  DATETIME2(0)  NOT NULL CONSTRAINT DF_TicketTypes_CreatedAt DEFAULT (SYSUTCDATETIME()),
-        CONSTRAINT FK_TicketTypes_Areas FOREIGN KEY (AreaId) REFERENCES dbo.Areas (Id)
-    );
-    CREATE INDEX IX_TicketTypes_AreaId ON dbo.TicketTypes (AreaId);
-END
+/* ---------- 3. Clasificacion (catálogo editable) ---------- */
+CREATE TABLE dbo.Clasificacion
+(
+    Id        INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Clasificacion PRIMARY KEY,
+    Nombre    NVARCHAR(100) NOT NULL,
+    Activo    BIT           NOT NULL CONSTRAINT DF_Clasificacion_Activo DEFAULT (1),
+    FechaAlta DATETIME2(0)  NOT NULL CONSTRAINT DF_Clasificacion_FechaAlta DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT UQ_Clasificacion_Nombre UNIQUE (Nombre)
+);
 GO
 
-/* ---------- 5. Tickets (antes @GP_TICKETS) ----------
-   RequesterUserCode / ResponsibleUserCode / DepartmentCode son
-   referencias externas a maestros de SAP (sin FK local, a propósito). */
-IF OBJECT_ID('dbo.Tickets', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.Tickets
-    (
-        Id                  INT            NOT NULL IDENTITY(1,1) CONSTRAINT PK_Tickets PRIMARY KEY,
-        TicketTypeId        INT            NOT NULL,
-        StatusId            TINYINT        NOT NULL CONSTRAINT DF_Tickets_StatusId DEFAULT (1),
-        RequesterUserCode   NVARCHAR(50)   NOT NULL,
-        DepartmentCode      NVARCHAR(50)   NULL,
-        ResponsibleUserCode NVARCHAR(50)   NULL,
-        Description         NVARCHAR(MAX)  NOT NULL,
-        Category            NVARCHAR(20)   NULL,          -- antes U_Tipo (p.ej. 'S')
-        AttachmentFileName  NVARCHAR(260)  NULL,
-        QualityDepartment   NVARCHAR(100)  NULL,          -- solo aplica a área Calidad
-        Machine             NVARCHAR(100)  NULL,          -- solo aplica a área Producción
-        Amount              DECIMAL(18,2)  NULL,
-        Quantity            DECIMAL(18,2)  NULL,
-        RegisteredTime      TIME(0)        NULL,          -- antes int de minutos
-        ClosedTime          TIME(0)        NULL,          -- antes int de minutos
-        EstimatedCloseDate  DATE           NULL,
-        CreatedAt           DATETIME2(0)   NOT NULL CONSTRAINT DF_Tickets_CreatedAt DEFAULT (SYSUTCDATETIME()),
-        ClosedAt            DATETIME2(0)   NULL,
-        SourceDatabase      NVARCHAR(50)   NULL,
-        IsActive            BIT            NOT NULL CONSTRAINT DF_Tickets_IsActive DEFAULT (1),
-        CONSTRAINT FK_Tickets_TicketTypes    FOREIGN KEY (TicketTypeId) REFERENCES dbo.TicketTypes (Id),
-        CONSTRAINT FK_Tickets_TicketStatuses FOREIGN KEY (StatusId)     REFERENCES dbo.TicketStatuses (Id)
-    );
-
-    CREATE INDEX IX_Tickets_TicketTypeId        ON dbo.Tickets (TicketTypeId);
-    CREATE INDEX IX_Tickets_RequesterUserCode   ON dbo.Tickets (RequesterUserCode);
-    CREATE INDEX IX_Tickets_ResponsibleUserCode ON dbo.Tickets (ResponsibleUserCode);
-    CREATE INDEX IX_Tickets_DepartmentCode      ON dbo.Tickets (DepartmentCode);
-    CREATE INDEX IX_Tickets_List ON dbo.Tickets (IsActive, StatusId, CreatedAt DESC);
-END
+/* ---------- 4. Categoria (catálogo editable, FK a Clasificacion) ---------- */
+CREATE TABLE dbo.Categoria
+(
+    Id              INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Categoria PRIMARY KEY,
+    ClasificacionId INT           NOT NULL,
+    Nombre          NVARCHAR(150) NOT NULL,
+    Activo          BIT           NOT NULL CONSTRAINT DF_Categoria_Activo DEFAULT (1),
+    FechaAlta       DATETIME2(0)  NOT NULL CONSTRAINT DF_Categoria_FechaAlta DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT FK_Categoria_Clasificacion FOREIGN KEY (ClasificacionId) REFERENCES dbo.Clasificacion (Id),
+    CONSTRAINT UQ_Categoria_Clasif_Nombre UNIQUE (ClasificacionId, Nombre)
+);
+CREATE INDEX IX_Categoria_ClasificacionId ON dbo.Categoria (ClasificacionId);
 GO
 
-/* ---------- 6. Comentarios (antes @GP_CHAT_TICKETS) ---------- */
-IF OBJECT_ID('dbo.TicketComments', 'U') IS NULL
-BEGIN
-    CREATE TABLE dbo.TicketComments
-    (
-        Id             INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_TicketComments PRIMARY KEY,
-        TicketId       INT           NOT NULL,
-        AuthorUserCode NVARCHAR(50)  NOT NULL,
-        Body           NVARCHAR(MAX) NOT NULL,
-        CreatedAt      DATETIME2(0)  NOT NULL CONSTRAINT DF_TicketComments_CreatedAt DEFAULT (SYSUTCDATETIME()),
-        CONSTRAINT FK_TicketComments_Tickets FOREIGN KEY (TicketId) REFERENCES dbo.Tickets (Id)
-    );
-    CREATE INDEX IX_TicketComments_TicketId ON dbo.TicketComments (TicketId);
-END
+/* ---------- 5. Prioridad (catálogo fijo, con texto SLA) ---------- */
+CREATE TABLE dbo.Prioridad
+(
+    Id          TINYINT       NOT NULL CONSTRAINT PK_Prioridad PRIMARY KEY,
+    Nombre      NVARCHAR(30)  NOT NULL,
+    Descripcion NVARCHAR(300) NOT NULL,   -- descripción + SLA de referencia
+    Orden       TINYINT       NOT NULL
+);
+GO
+
+/* ---------- 6. Estatus (catálogo del ciclo de vida del ticket) ---------- */
+CREATE TABLE dbo.Estatus
+(
+    Id      TINYINT      NOT NULL CONSTRAINT PK_Estatus PRIMARY KEY,
+    Nombre  NVARCHAR(50) NOT NULL,
+    Orden   TINYINT      NOT NULL,
+    EsFinal BIT          NOT NULL CONSTRAINT DF_Estatus_EsFinal DEFAULT (0),
+    CONSTRAINT UQ_Estatus_Nombre UNIQUE (Nombre)
+);
+GO
+
+/* ---------- 7. Tickets ---------- */
+CREATE TABLE dbo.Tickets
+(
+    Id                    INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Tickets PRIMARY KEY,
+    SolicitanteId         INT           NOT NULL,
+    Correo                NVARCHAR(256) NULL,
+    Celular               NVARCHAR(10)  NULL,
+    TipoSolicitud         TINYINT       NOT NULL,   -- 1 = Incidencia, 2 = Requerimiento
+    ClasificacionId       INT           NOT NULL,
+    CategoriaId           INT           NOT NULL,
+    PrioridadId           TINYINT       NOT NULL,
+    EstatusId             TINYINT       NOT NULL CONSTRAINT DF_Tickets_EstatusId DEFAULT (1),  -- Por asignar
+    ResponsableEmpleadoId INT           NULL,
+    Descripcion           NVARCHAR(2000) NOT NULL,
+    CreatedAt             DATETIME2(0)  NOT NULL CONSTRAINT DF_Tickets_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    ClosedAt              DATETIME2(0)  NULL,
+    IsActive              BIT           NOT NULL CONSTRAINT DF_Tickets_IsActive DEFAULT (1),
+    CONSTRAINT FK_Tickets_Solicitante   FOREIGN KEY (SolicitanteId)         REFERENCES dbo.Empleados (Id),
+    CONSTRAINT FK_Tickets_Responsable   FOREIGN KEY (ResponsableEmpleadoId) REFERENCES dbo.Empleados (Id),
+    CONSTRAINT FK_Tickets_Clasificacion FOREIGN KEY (ClasificacionId)       REFERENCES dbo.Clasificacion (Id),
+    CONSTRAINT FK_Tickets_Categoria     FOREIGN KEY (CategoriaId)           REFERENCES dbo.Categoria (Id),
+    CONSTRAINT FK_Tickets_Prioridad     FOREIGN KEY (PrioridadId)           REFERENCES dbo.Prioridad (Id),
+    CONSTRAINT FK_Tickets_Estatus       FOREIGN KEY (EstatusId)             REFERENCES dbo.Estatus (Id),
+    CONSTRAINT CK_Tickets_TipoSolicitud CHECK (TipoSolicitud IN (1, 2))
+);
+CREATE INDEX IX_Tickets_SolicitanteId ON dbo.Tickets (SolicitanteId);
+CREATE INDEX IX_Tickets_EstatusId     ON dbo.Tickets (EstatusId);
+CREATE INDEX IX_Tickets_ClasificacionId ON dbo.Tickets (ClasificacionId);
+CREATE INDEX IX_Tickets_CategoriaId   ON dbo.Tickets (CategoriaId);
+CREATE INDEX IX_Tickets_List          ON dbo.Tickets (IsActive, EstatusId, CreatedAt DESC);
+GO
+
+/* ---------- 8. TicketComments (comentarios generales) ---------- */
+CREATE TABLE dbo.TicketComments
+(
+    Id             INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_TicketComments PRIMARY KEY,
+    TicketId       INT           NOT NULL,
+    AutorCodigo    NVARCHAR(50)  NOT NULL,   -- usuario que comenta (código actual)
+    Comentario     NVARCHAR(MAX) NOT NULL,
+    CreatedAt      DATETIME2(0)  NOT NULL CONSTRAINT DF_TicketComments_CreatedAt DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT FK_TicketComments_Tickets FOREIGN KEY (TicketId) REFERENCES dbo.Tickets (Id)
+);
+CREATE INDEX IX_TicketComments_TicketId ON dbo.TicketComments (TicketId);
+GO
+
+/* ---------- 9. HistorialEstatus (bitácora específica de estatus) ---------- */
+CREATE TABLE dbo.HistorialEstatus
+(
+    Id                INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_HistorialEstatus PRIMARY KEY,
+    TicketId          INT           NOT NULL,
+    EstatusAnteriorId TINYINT       NULL,
+    EstatusNuevoId    TINYINT       NOT NULL,
+    Comentario        NVARCHAR(1000) NOT NULL,   -- obligatorio al cambiar de estatus
+    UsuarioCodigo     NVARCHAR(50)  NOT NULL,
+    Fecha             DATETIME2(0)  NOT NULL CONSTRAINT DF_HistorialEstatus_Fecha DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT FK_HistorialEstatus_Tickets  FOREIGN KEY (TicketId)          REFERENCES dbo.Tickets (Id),
+    CONSTRAINT FK_HistorialEstatus_EstAnt   FOREIGN KEY (EstatusAnteriorId) REFERENCES dbo.Estatus (Id),
+    CONSTRAINT FK_HistorialEstatus_EstNue   FOREIGN KEY (EstatusNuevoId)    REFERENCES dbo.Estatus (Id)
+);
+CREATE INDEX IX_HistorialEstatus_TicketId ON dbo.HistorialEstatus (TicketId);
+GO
+
+/* ---------- 10. Adjuntos (evidencias, múltiples por ticket) ---------- */
+CREATE TABLE dbo.Adjuntos
+(
+    Id               INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Adjuntos PRIMARY KEY,
+    TicketId         INT           NOT NULL,
+    NombreOriginal   NVARCHAR(260) NOT NULL,
+    NombreAlmacenado NVARCHAR(260) NOT NULL,
+    TipoContenido    NVARCHAR(150) NULL,
+    TamanoBytes      BIGINT        NOT NULL,
+    UsuarioCodigo    NVARCHAR(50)  NULL,
+    Fecha            DATETIME2(0)  NOT NULL CONSTRAINT DF_Adjuntos_Fecha DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT FK_Adjuntos_Tickets FOREIGN KEY (TicketId) REFERENCES dbo.Tickets (Id)
+);
+CREATE INDEX IX_Adjuntos_TicketId ON dbo.Adjuntos (TicketId);
+GO
+
+/* ---------- 11. TicketLog (auditoría general, solo-inserción) ---------- */
+CREATE TABLE dbo.TicketLog
+(
+    Id            BIGINT        NOT NULL IDENTITY(1,1) CONSTRAINT PK_TicketLog PRIMARY KEY,
+    TicketId      INT           NOT NULL,
+    Accion        NVARCHAR(50)  NOT NULL,   -- Creacion, EdicionCampo, CambioEstatus, AsignaResponsable, AdjuntoAgregado, ...
+    Descripcion   NVARCHAR(500) NULL,
+    ValorAnterior NVARCHAR(MAX) NULL,
+    ValorNuevo    NVARCHAR(MAX) NULL,
+    UsuarioCodigo NVARCHAR(50)  NULL,
+    FechaHora     DATETIME2(0)  NOT NULL CONSTRAINT DF_TicketLog_FechaHora DEFAULT (SYSUTCDATETIME()),
+    CONSTRAINT FK_TicketLog_Tickets FOREIGN KEY (TicketId) REFERENCES dbo.Tickets (Id)
+);
+CREATE INDEX IX_TicketLog_TicketId ON dbo.TicketLog (TicketId);
 GO
 
 /* =====================================================================
    DATOS SEMILLA
    ===================================================================== */
 
-/* Estatus (Ids estables usados por el enum TicketStatus en C#) */
-MERGE dbo.TicketStatuses AS target
-USING (VALUES
-    (1, N'A',  N'Creado'),
-    (2, N'EP', N'En Proceso'),
-    (3, N'C',  N'Cerrado')
-) AS src (Id, Code, Name)
-ON target.Id = src.Id
-WHEN MATCHED THEN UPDATE SET Code = src.Code, Name = src.Name
-WHEN NOT MATCHED THEN INSERT (Id, Code, Name) VALUES (src.Id, src.Code, src.Name);
+/* Prioridad (con SLA de referencia) */
+INSERT INTO dbo.Prioridad (Id, Nombre, Descripcion, Orden) VALUES
+    (1, N'Alto',  N'Detiene la operación — atención de 1 a 4 horas.',        1),
+    (2, N'Medio', N'No detiene la operación — atención de 1 a 2 días.',       2),
+    (3, N'Bajo',  N'Atención de 1 a 5 días.',                                 3);
 GO
 
-/* Áreas */
-IF NOT EXISTS (SELECT 1 FROM dbo.Areas)
-BEGIN
-    INSERT INTO dbo.Areas (Code, Name) VALUES
-        (N'CAL', N'Calidad'),
-        (N'PD',  N'Producción'),
-        (N'SIS', N'Sistemas');
-END
+/* Estatus (ciclo de vida) */
+INSERT INTO dbo.Estatus (Id, Nombre, Orden, EsFinal) VALUES
+    (1,  N'Por asignar',     1,  0),
+    (2,  N'Asignado',        2,  0),
+    (3,  N'Análisis',        3,  0),
+    (4,  N'Desarrollo',      4,  0),
+    (5,  N'Pruebas TI',      5,  0),
+    (6,  N'Pruebas Usuario', 6,  0),
+    (7,  N'Cotización',      7,  0),
+    (8,  N'Autorización',    8,  0),
+    (9,  N'Pausa',           9,  0),
+    (10, N'En proceso',     10,  0),
+    (11, N'Cancelado',      11,  1),
+    (12, N'Finalizado',     12,  1);
 GO
 
-/* Tipos de solicitud por área */
-IF NOT EXISTS (SELECT 1 FROM dbo.TicketTypes)
-BEGIN
-    DECLARE @cal INT = (SELECT Id FROM dbo.Areas WHERE Code = N'CAL');
-    DECLARE @pd  INT = (SELECT Id FROM dbo.Areas WHERE Code = N'PD');
-    DECLARE @sis INT = (SELECT Id FROM dbo.Areas WHERE Code = N'SIS');
-
-    INSERT INTO dbo.TicketTypes (AreaId, Name, DefaultResponsibleUserCode) VALUES
-        (@cal, N'No conformidad',      N'jhernandez'),
-        (@cal, N'Devolución',          N'jhernandez'),
-        (@pd,  N'Falla de máquina',    N'klopez'),
-        (@pd,  N'Mantenimiento',       N'klopez'),
-        (@sis, N'Soporte de sistemas', N'blozano'),
-        (@sis, N'Alta de usuario',     N'blozano');
-END
+/* Clasificación (crece por "Otro") */
+INSERT INTO dbo.Clasificacion (Nombre) VALUES
+    (N'SAP'), (N'CRM'), (N'QUOTE'), (N'FACTURACIÓN'), (N'COMPRAS'), (N'LOGÍSTICA');
 GO
 
-/* Ticket de ejemplo */
-IF NOT EXISTS (SELECT 1 FROM dbo.Tickets)
-BEGIN
-    DECLARE @tType INT = (SELECT TOP 1 Id FROM dbo.TicketTypes ORDER BY Id);
+/* Categorías de ejemplo por clasificación */
+INSERT INTO dbo.Categoria (ClasificacionId, Nombre)
+SELECT Id, N'General' FROM dbo.Clasificacion;
+INSERT INTO dbo.Categoria (ClasificacionId, Nombre)
+SELECT Id, N'Acceso / Permisos' FROM dbo.Clasificacion WHERE Nombre IN (N'SAP', N'CRM');
+GO
 
-    INSERT INTO dbo.Tickets
-        (TicketTypeId, StatusId, RequesterUserCode, DepartmentCode, ResponsibleUserCode,
-         Description, Category, RegisteredTime, CreatedAt)
-    VALUES
-        (@tType, 1, N'jperez', N'VEN', N'jhernandez',
-         N'Ticket de ejemplo — revisión de no conformidad.', N'S', CAST(SYSUTCDATETIME() AS TIME(0)), SYSUTCDATETIME());
-END
+/* Empleados de ejemplo */
+INSERT INTO dbo.Empleados (Codigo, Nombre, Correo, Telefono) VALUES
+    (N'blozano', N'Benjamín Lozano', N'blozano@impulsoraint.com', N'5512345678'),
+    (N'jperez',  N'Juan Pérez',      N'jperez@impulsoraint.com',  NULL),
+    (NULL,       N'María García',    NULL,                        NULL);
 GO

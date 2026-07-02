@@ -21,6 +21,10 @@ public static class DependencyInjection
         services.AddScoped<ITicketRepository, TicketRepository>();
         services.AddScoped<ITicketCommentRepository, TicketCommentRepository>();
         services.AddScoped<ICatalogRepository, CatalogRepository>();
+        services.AddScoped<IEmpleadoRepository, EmpleadoRepository>();
+        services.AddScoped<IHistorialEstatusRepository, HistorialEstatusRepository>();
+        services.AddScoped<IAdjuntoRepository, AdjuntoRepository>();
+        services.AddScoped<ITicketLogRepository, TicketLogRepository>();
 
         // Directorio de usuarios: SAP si hay conexión configurada; si no, implementación vacía.
         if (string.IsNullOrWhiteSpace(directoryConn))
@@ -29,7 +33,7 @@ public static class DependencyInjection
         }
         else
         {
-            var usersView = configuration["Sap:UsersView"] ?? "dbo.VL_USUARIOS";
+            var usersView = configuration["Sap:UsersView"] ?? "dbo.VL_Usuarios";
             services.AddScoped<IUserDirectoryRepository>(sp =>
                 new SapUserDirectoryRepository(sp.GetRequiredService<ISqlConnectionFactory>(), usersView));
         }
