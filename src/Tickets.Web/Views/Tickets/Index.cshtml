@@ -34,10 +34,18 @@
     <!-- Formulario de creación (antes de los filtros) -->
     @await Html.PartialAsync("_CreateTicketForm")
 
-    <!-- Filtros -->
+    <!-- Filtros (recargan la tabla automáticamente al cambiar) -->
     <div class="card mb-3">
         <div class="card-body">
-            <div class="row g-2">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label form-label-sm mb-0 small">Desde</label>
+                    <input type="date" id="filterDesde" class="form-control form-control-sm" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label form-label-sm mb-0 small">Hasta</label>
+                    <input type="date" id="filterHasta" class="form-control form-control-sm" />
+                </div>
                 <div class="col-6 col-md">
                     <select id="filterEstatus" class="form-select form-select-sm"><option value="">Estatus</option></select>
                 </div>
@@ -56,20 +64,6 @@
                         <option value="1">Incidencia</option>
                         <option value="2">Requerimiento</option>
                     </select>
-                </div>
-                <div class="col-6 col-md">
-                    <select id="filterPeriod" class="form-select form-select-sm">
-                        <option value="lastMonth">Último mes</option>
-                        <option value="last3Months">3 meses</option>
-                        <option value="last6Months">6 meses</option>
-                        <option value="lastYear">1 año</option>
-                        <option value="last2Years" selected>2 años</option>
-                        <option value="all">Todo</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-auto d-flex gap-2">
-                    <button id="btnApplyFilters" class="btn btn-sm btn-primary flex-fill">Filtrar</button>
-                    <button id="btnClearFilters" class="btn btn-sm btn-outline-secondary flex-fill">Limpiar</button>
                 </div>
             </div>
         </div>
@@ -104,6 +98,7 @@
 </div>
 
 @await Html.PartialAsync("_TicketDetailModal")
+@await Html.PartialAsync("_CatalogModals")
 
 @section Scripts {
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>

@@ -4,7 +4,7 @@
 
     const cfg = window.ticketsConfig;
     const NEW = "__new__";
-    const state = { table: null, detailModal: null, empleados: [], estatus: [], prioridades: [], clasificaciones: [] };
+    const state = { table: null, detailModal: null, modals: {}, empleados: [], estatus: [], prioridades: [], clasificaciones: [] };
 
     // ---------- HTTP ----------
     async function getJson(url, params) {
@@ -47,28 +47,27 @@
     }
     function fmtDate(v) {
         if (!v) return "—";
-        if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && v.length === 10) {
-            const [y, m, d] = v.split("-"); return d + "/" + m + "/" + y;
-        }
+        if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}/.test(v) && v.length === 10) { const [y, m, d] = v.split("-"); return d + "/" + m + "/" + y; }
         return new Date(v).toLocaleDateString("es-MX");
     }
     function fmtDateTime(v) { return v ? new Date(v).toLocaleString("es-MX") : "—"; }
     function fmtSize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.ceil(b / 1024) + " KB"; }
-    function initTooltips(scope) {
-        (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(e => {
-            if (!e._tt) e._tt = new bootstrap.Tooltip(e);
-        });
-    }
+    function isoLocal(d) { const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0"); return `${y}-${m}-${day}`; }
+    function initTooltips(scope) { (scope || document).querySelectorAll('[data-bs-toggle="tooltip"]').forEach(e => { if (!e._tt) e._tt = new bootstrap.Tooltip(e); }); }
     function fillSelect(id, options, firstText) {
         const sel = el(id); if (!sel) return;
         sel.innerHTML = firstText !== undefined ? '<option value="">' + firstText + '</option>' : "";
         options.forEach(o => { const opt = document.createElement("option"); opt.value = o.value; opt.textContent = o.text; sel.appendChild(opt); });
     }
+    function addOption(sel, opt, beforeValue) {
+        const o = document.createElement("option"); o.value = opt.value; o.textContent = opt.text;
+        const ref = beforeValue ? [...sel.options].find(x => x.value === beforeValue) : null;
+        if (ref) sel.insertBefore(o, ref); else sel.appendChild(o);
+    }
 
-    // ---------- Carga de catálogos ----------
+    // ---------- Catálogos ----------
     async function loadPrioridades() {
         state.prioridades = (await getJson(cfg.urls.getPrioridades)).data;
-        // radios en el formulario de creación
         const box = el("prioridadRadios");
         box.innerHTML = state.prioridades.map((p, i) =>
             '<div class="form-check form-check-inline">' +
@@ -89,8 +88,7 @@
     }
     async function loadClasificaciones() {
         state.clasificaciones = (await getJson(cfg.urls.getClasificaciones)).data;
-        const withOtro = state.clasificaciones.concat([{ value: NEW, text: "➕ Otro…" }]);
-        fillSelect("createClasificacion", withOtro, "Seleccione…");
+        fillSelect("createClasificacion", state.clasificaciones.concat([{ value: NEW, text: "➕ Otro…" }]), "Seleccione…");
         fillSelect("dtlClasificacion", state.clasificaciones);
         fillSelect("filterClasificacion", state.clasificaciones, "Clasificación");
     }
@@ -100,48 +98,26 @@
         fillSelect("createSolicitante", opts, "Seleccione…");
         fillSelect("dtlResponsable", opts, "— Sin responsable —");
         fillSelect("filterSolicitante", opts, "Solicitante");
-        // Preseleccionar al usuario actual
-        if (cfg.currentEmpleadoId) {
-            el("createSolicitante").value = cfg.currentEmpleadoId;
-            autofillCorreo();
-        }
+        if (cfg.currentEmpleadoId) { el("createSolicitante").value = cfg.currentEmpleadoId; autofillCorreo(); }
     }
     async function loadCategorias(clasId, targetId, includeOtro) {
         const sel = el(targetId);
         sel.innerHTML = '<option value="">Seleccione…</option>';
         if (!clasId || clasId === NEW) return;
         const data = (await getJson(cfg.urls.getCategorias, { clasificacionId: clasId })).data;
-        data.forEach(c => { const o = document.createElement("option"); o.value = c.value; o.textContent = c.text; sel.appendChild(o); });
-        if (includeOtro) { const o = document.createElement("option"); o.value = NEW; o.textContent = "➕ Otro…"; sel.appendChild(o); }
+        data.forEach(c => addOption(sel, c));
+        if (includeOtro) addOption(sel, { value: NEW, text: "➕ Otro…" });
     }
 
-    // ---------- "Otro" ----------
-    async function handleOtroClasificacion(selectId, reloadCatTarget) {
-        const nombre = prompt("Nueva clasificación:");
-        const sel = el(selectId);
-        if (!nombre || !nombre.trim()) { sel.value = ""; return; }
-        try {
-            const r = await postForm(cfg.urls.addClasificacion, { Nombre: nombre.trim() });
-            addOption(sel, r.data, NEW);
-            sel.value = r.data.value;
-            state.clasificaciones = (await getJson(cfg.urls.getClasificaciones)).data;
-            if (reloadCatTarget) await loadCategorias(r.data.value, reloadCatTarget, true);
-        } catch (e) { toast(e.message, "danger"); sel.value = ""; }
+    // ---------- Alta de catálogos (modales, con auto-selección) ----------
+    function appendEmpleado(emp) {
+        ["createSolicitante", "dtlResponsable", "filterSolicitante"].forEach(id => addOption(el(id), { value: emp.id, text: emp.nombre }));
     }
-    async function handleOtroCategoria(selectId, clasId) {
-        const nombre = prompt("Nueva categoría:");
-        const sel = el(selectId);
-        if (!nombre || !nombre.trim()) { sel.value = ""; return; }
-        try {
-            const r = await postForm(cfg.urls.addCategoria, { ClasificacionId: clasId, Nombre: nombre.trim() });
-            addOption(sel, r.data, NEW);
-            sel.value = r.data.value;
-        } catch (e) { toast(e.message, "danger"); sel.value = ""; }
-    }
-    function addOption(sel, opt, beforeValue) {
-        const o = document.createElement("option"); o.value = opt.value; o.textContent = opt.text;
-        const ref = [...sel.options].find(x => x.value === beforeValue);
-        if (ref) sel.insertBefore(o, ref); else sel.appendChild(o);
+    function appendClasificacion(opt) {
+        addOption(el("createClasificacion"), opt, NEW);
+        addOption(el("dtlClasificacion"), opt);
+        addOption(el("filterClasificacion"), opt);
+        state.clasificaciones.push(opt);
     }
 
     // ---------- Formulario de creación ----------
@@ -153,20 +129,16 @@
     async function submitCreate(ev) {
         ev.preventDefault();
         const form = el("createTicketForm");
-        if (el("createClasificacion").value === NEW || el("createCategoria").value === NEW) {
-            toast("Completa la clasificación/categoría.", "danger"); return;
-        }
-        const data = new URLSearchParams(new FormData(form));
+        if (el("createClasificacion").value === NEW || el("createCategoria").value === NEW) { toast("Completa la clasificación/categoría.", "danger"); return; }
         try {
-            const r = await postForm(cfg.urls.create, data.toString());
+            const r = await postForm(cfg.urls.create, new URLSearchParams(new FormData(form)).toString());
             const files = el("createFiles").files;
             if (files.length) await uploadFiles(r.id, files);
             toast("Ticket creado.", "success");
             form.reset();
             el("descCount").textContent = "0";
             el("createCategoria").innerHTML = '<option value="">Seleccione…</option>';
-            el("createSolicitante").value = cfg.currentEmpleadoId || "";
-            autofillCorreo();
+            el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
             await Promise.all([refreshDashboard(), loadEmpleados()]);
             await loadTickets();
         } catch (e) { toast(e.message, "danger"); }
@@ -179,14 +151,20 @@
         if (r.errores && r.errores.length) r.errores.forEach(m => toast(m, "danger"));
     }
 
-    // ---------- Filtros ----------
+    // ---------- Filtros (recargan solos) ----------
     function currentFilter() {
         const v = id => { const e = el(id); return e ? e.value : ""; };
         return {
+            Desde: v("filterDesde"), Hasta: v("filterHasta"),
             EstatusId: v("filterEstatus"), ClasificacionId: v("filterClasificacion"),
-            PrioridadId: v("filterPrioridad"), SolicitanteId: v("filterSolicitante"),
-            TipoSolicitud: v("filterTipo"), Period: v("filterPeriod")
+            PrioridadId: v("filterPrioridad"), SolicitanteId: v("filterSolicitante"), TipoSolicitud: v("filterTipo")
         };
+    }
+    function setDefaultDateRange() {
+        const hasta = new Date();
+        const desde = new Date(); desde.setMonth(desde.getMonth() - 3);
+        el("filterDesde").value = isoLocal(desde);
+        el("filterHasta").value = isoLocal(hasta);
     }
     async function refreshDashboard() {
         const d = (await getJson(cfg.urls.getDashboard)).data;
@@ -219,19 +197,14 @@
                 { data: null, orderable: false, searchable: false, className: "text-center", render: () => '<button type="button" class="btn btn-sm btn-primary">Ver</button>' }
             ]
         });
-        $("#ticketsTable tbody").on("click", "tr", function () {
-            const d = state.table.row(this).data();
-            if (d) openDetail(d.id);
-        });
+        $("#ticketsTable tbody").on("click", "tr", function () { const d = state.table.row(this).data(); if (d) openDetail(d.id); });
     }
     async function loadTickets() {
-        try {
-            const r = await getJson(cfg.urls.getTickets, currentFilter());
-            state.table.clear().rows.add(r.items).draw();
-        } catch (e) { toast(e.message, "danger"); }
+        try { const r = await getJson(cfg.urls.getTickets, currentFilter()); state.table.clear().rows.add(r.items).draw(); }
+        catch (e) { toast(e.message, "danger"); }
     }
 
-    // ---------- Modal de detalle ----------
+    // ---------- Detalle ----------
     async function openDetail(id) {
         try {
             const t = (await getJson(cfg.urls.getTicket, { id })).data;
@@ -260,15 +233,13 @@
         el("dtlCategoria").value = t.categoriaId;
     }
     function ticketId() { return el("ticketDetailModal").dataset.id; }
-
     async function saveDetail() {
         const id = ticketId();
         try {
             await postForm(cfg.urls.update, {
                 TicketId: id, Correo: el("dtlCorreo").value, Celular: el("dtlCelular").value,
                 TipoSolicitud: el("dtlTipo").value, ClasificacionId: el("dtlClasificacion").value,
-                CategoriaId: el("dtlCategoria").value, PrioridadId: el("dtlPrioridad").value,
-                Descripcion: el("dtlDescripcion").value
+                CategoriaId: el("dtlCategoria").value, PrioridadId: el("dtlPrioridad").value, Descripcion: el("dtlDescripcion").value
             });
             toast("Cambios guardados.", "success");
             await Promise.all([loadTickets(), loadLog(id)]);
@@ -288,81 +259,72 @@
         } catch (e) { toast(e.message, "danger"); }
     }
     async function assignResponsable() {
-        const id = ticketId();
-        const resp = el("dtlResponsable").value;
+        const id = ticketId(); const resp = el("dtlResponsable").value;
         if (!resp) { toast("Selecciona un responsable.", "danger"); return; }
-        try {
-            await postForm(cfg.urls.assignResponsable, { TicketId: id, ResponsableEmpleadoId: resp });
-            toast("Responsable asignado.", "success");
-            await Promise.all([loadTickets(), loadLog(id)]);
-        } catch (e) { toast(e.message, "danger"); }
+        try { await postForm(cfg.urls.assignResponsable, { TicketId: id, ResponsableEmpleadoId: resp }); toast("Responsable asignado.", "success"); await Promise.all([loadTickets(), loadLog(id)]); }
+        catch (e) { toast(e.message, "danger"); }
     }
     async function inactivate() {
         const id = ticketId();
         if (!confirm("¿Inactivar el ticket #" + id + "?")) return;
-        try {
-            await postForm(cfg.urls.setInactive, { id });
-            toast("Ticket inactivado.", "success");
-            state.detailModal.hide();
-            await Promise.all([refreshDashboard(), loadTickets()]);
-        } catch (e) { toast(e.message, "danger"); }
+        try { await postForm(cfg.urls.setInactive, { id }); toast("Ticket inactivado.", "success"); state.detailModal.hide(); await Promise.all([refreshDashboard(), loadTickets()]); }
+        catch (e) { toast(e.message, "danger"); }
     }
-
-    // ---------- Adjuntos ----------
     async function loadAdjuntos(id) {
         const data = (await getJson(cfg.urls.getAdjuntos, { ticketId: id })).data;
         el("dtlAdjuntos").innerHTML = data.length
-            ? data.map(a => '<li><i class="bi bi-paperclip"></i> <a href="' + cfg.urls.downloadAdjunto + '?id=' + a.id + '">' +
-                escapeHtml(a.nombreOriginal) + '</a> <span class="text-muted">(' + fmtSize(a.tamanoBytes) + ')</span></li>').join("")
+            ? data.map(a => '<li><i class="bi bi-paperclip"></i> <a href="' + cfg.urls.downloadAdjunto + '?id=' + a.id + '">' + escapeHtml(a.nombreOriginal) + '</a> <span class="text-muted">(' + fmtSize(a.tamanoBytes) + ')</span></li>').join("")
             : '<li class="text-muted">Sin evidencias.</li>';
     }
     async function uploadDetailFiles() {
-        const id = ticketId();
-        const files = el("dtlFiles").files;
+        const id = ticketId(); const files = el("dtlFiles").files;
         if (!files.length) return;
         try { await uploadFiles(id, files); el("dtlFiles").value = ""; toast("Evidencias subidas.", "success"); await Promise.all([loadAdjuntos(id), loadLog(id)]); }
         catch (e) { toast(e.message, "danger"); }
     }
-
-    // ---------- Comentarios ----------
     async function loadComments(id) {
         const data = (await getJson(cfg.urls.getComments, { ticketId: id })).data;
         el("dtlComments").innerHTML = data.length
-            ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between"><strong>' + escapeHtml(c.autorNombre) +
-                '</strong><small class="text-muted">' + fmtDateTime(c.createdAt) + '</small></div><div>' + escapeHtml(c.comentario) + '</div></div>').join("")
+            ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between"><strong>' + escapeHtml(c.autorNombre) + '</strong><small class="text-muted">' + fmtDateTime(c.createdAt) + '</small></div><div>' + escapeHtml(c.comentario) + '</div></div>').join("")
             : '<p class="text-muted text-center small">Sin comentarios.</p>';
     }
-
-    // ---------- Historial / bitácora ----------
     async function loadHistorial(id) {
         const data = (await getJson(cfg.urls.getHistorial, { ticketId: id })).data;
         el("dtlHistorial").innerHTML = data.length
-            ? data.map(h => '<tr><td>' + fmtDateTime(h.fecha) + '</td><td>' + escapeHtml(h.estatusAnterior || "—") +
-                '</td><td>' + escapeHtml(h.estatusNuevo) + '</td><td>' + escapeHtml(h.comentario) + '</td><td>' + escapeHtml(h.usuarioCodigo) + '</td></tr>').join("")
+            ? data.map(h => '<tr><td>' + fmtDateTime(h.fecha) + '</td><td>' + escapeHtml(h.estatusAnterior || "—") + '</td><td>' + escapeHtml(h.estatusNuevo) + '</td><td>' + escapeHtml(h.comentario) + '</td><td>' + escapeHtml(h.usuarioCodigo) + '</td></tr>').join("")
             : '<tr><td colspan="5" class="text-muted text-center">Sin registros.</td></tr>';
     }
     async function loadLog(id) {
         const data = (await getJson(cfg.urls.getLog, { ticketId: id })).data;
         el("dtlLog").innerHTML = data.length
-            ? data.map(l => '<tr><td>' + fmtDateTime(l.fechaHora) + '</td><td>' + escapeHtml(l.accion) + '</td><td>' + escapeHtml(l.descripcion || "") +
-                '</td><td>' + escapeHtml(l.valorAnterior || "—") + '</td><td>' + escapeHtml(l.valorNuevo || "—") + '</td><td>' + escapeHtml(l.usuarioCodigo || "") + '</td></tr>').join("")
+            ? data.map(l => '<tr><td>' + fmtDateTime(l.fechaHora) + '</td><td>' + escapeHtml(l.accion) + '</td><td>' + escapeHtml(l.descripcion || "") + '</td><td>' + escapeHtml(l.valorAnterior || "—") + '</td><td>' + escapeHtml(l.valorNuevo || "—") + '</td><td>' + escapeHtml(l.usuarioCodigo || "") + '</td></tr>').join("")
             : '<tr><td colspan="6" class="text-muted text-center">Sin registros.</td></tr>';
     }
 
     // ---------- Init ----------
     $(async function () {
         state.detailModal = new bootstrap.Modal(el("ticketDetailModal"));
+        state.modals.empleado = new bootstrap.Modal(el("empleadoModal"));
+        state.modals.clasificacion = new bootstrap.Modal(el("clasificacionModal"));
+        state.modals.categoria = new bootstrap.Modal(el("categoriaModal"));
         initTable();
         initTooltips();
+        setDefaultDateRange();
 
         // Creación
         el("createSolicitante").addEventListener("change", autofillCorreo);
         el("createClasificacion").addEventListener("change", async e => {
-            if (e.target.value === NEW) return handleOtroClasificacion("createClasificacion", "createCategoria");
+            if (e.target.value === NEW) { e.target.value = ""; el("createCategoria").innerHTML = '<option value="">Seleccione…</option>'; state.modals.clasificacion.show(); return; }
             await loadCategorias(e.target.value, "createCategoria", true);
         });
         el("createCategoria").addEventListener("change", e => {
-            if (e.target.value === NEW) handleOtroCategoria("createCategoria", el("createClasificacion").value);
+            if (e.target.value !== NEW) return;
+            e.target.value = "";
+            const clasId = el("createClasificacion").value;
+            if (!clasId || clasId === NEW) { toast("Primero selecciona una clasificación.", "danger"); return; }
+            el("catClasificacionId").value = clasId;
+            el("catClasificacionNombre").textContent = el("createClasificacion").selectedOptions[0]?.textContent || "";
+            state.modals.categoria.show();
         });
         el("createDescripcion").addEventListener("input", e => el("descCount").textContent = e.target.value.length);
         el("createTicketForm").addEventListener("submit", submitCreate);
@@ -372,29 +334,44 @@
             el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
         }, 0));
 
-        // Alta rápida de solicitante
-        el("btnNuevoSolicitante").addEventListener("click", () => bootstrap.Collapse.getOrCreateInstance(el("nuevoSolicitanteBox")).toggle());
-        el("nsCancelar").addEventListener("click", () => bootstrap.Collapse.getOrCreateInstance(el("nuevoSolicitanteBox")).hide());
-        el("nsGuardar").addEventListener("click", async () => {
+        // Modales de catálogo
+        el("btnNuevoSolicitante").addEventListener("click", () => state.modals.empleado.show());
+        el("empleadoForm").addEventListener("submit", async ev => {
+            ev.preventDefault();
             try {
-                const r = await postForm(cfg.urls.addEmpleado, { Nombre: el("nsNombre").value, Correo: el("nsCorreo").value, Telefono: el("nsTelefono").value });
-                const emp = r.data; state.empleados.push(emp);
-                [["createSolicitante"], ["dtlResponsable"], ["filterSolicitante"]].forEach(([sid]) => {
-                    const o = document.createElement("option"); o.value = emp.id; o.textContent = emp.nombre; el(sid).appendChild(o);
-                });
-                el("createSolicitante").value = emp.id; autofillCorreo();
-                ["nsNombre", "nsCorreo", "nsTelefono"].forEach(i => el(i).value = "");
-                bootstrap.Collapse.getOrCreateInstance(el("nuevoSolicitanteBox")).hide();
+                const r = await postForm(cfg.urls.addEmpleado, { Nombre: el("empNombre").value, Correo: el("empCorreo").value, Telefono: el("empTelefono").value });
+                state.empleados.push(r.data); appendEmpleado(r.data);
+                el("createSolicitante").value = r.data.id; autofillCorreo();
+                state.modals.empleado.hide(); el("empleadoForm").reset();
                 toast("Solicitante agregado.", "success");
             } catch (e) { toast(e.message, "danger"); }
         });
-
-        // Filtros
-        el("btnApplyFilters").addEventListener("click", loadTickets);
-        el("btnClearFilters").addEventListener("click", () => {
-            ["filterEstatus", "filterClasificacion", "filterPrioridad", "filterSolicitante", "filterTipo"].forEach(i => el(i).value = "");
-            el("filterPeriod").value = "last2Years"; loadTickets();
+        el("clasificacionForm").addEventListener("submit", async ev => {
+            ev.preventDefault();
+            try {
+                const r = await postForm(cfg.urls.addClasificacion, { Nombre: el("clasNombre").value });
+                appendClasificacion(r.data);
+                el("createClasificacion").value = r.data.value;
+                await loadCategorias(r.data.value, "createCategoria", true);
+                state.modals.clasificacion.hide(); el("clasificacionForm").reset();
+                toast("Clasificación agregada.", "success");
+            } catch (e) { toast(e.message, "danger"); }
         });
+        el("categoriaForm").addEventListener("submit", async ev => {
+            ev.preventDefault();
+            try {
+                const clasId = el("catClasificacionId").value;
+                const r = await postForm(cfg.urls.addCategoria, { ClasificacionId: clasId, Nombre: el("catNombre").value });
+                addOption(el("createCategoria"), r.data, NEW);
+                el("createCategoria").value = r.data.value;
+                state.modals.categoria.hide(); el("categoriaForm").reset();
+                toast("Categoría agregada.", "success");
+            } catch (e) { toast(e.message, "danger"); }
+        });
+
+        // Filtros: recarga automática al cambiar cualquiera
+        ["filterDesde", "filterHasta", "filterEstatus", "filterClasificacion", "filterPrioridad", "filterSolicitante", "filterTipo"]
+            .forEach(id => el(id).addEventListener("change", loadTickets));
 
         // Detalle
         el("dtlClasificacion").addEventListener("change", e => loadCategorias(e.target.value, "dtlCategoria", false));
@@ -406,15 +383,12 @@
         el("dtlCommentForm").addEventListener("submit", async ev => {
             ev.preventDefault();
             const id = el("dtlCommentTicketId").value;
-            try {
-                await postForm(cfg.urls.addComment, { TicketId: id, Comentario: el("dtlCommentBody").value });
-                el("dtlCommentBody").value = ""; await Promise.all([loadComments(id), loadLog(id)]);
-            } catch (e) { toast(e.message, "danger"); }
+            try { await postForm(cfg.urls.addComment, { TicketId: id, Comentario: el("dtlCommentBody").value }); el("dtlCommentBody").value = ""; await Promise.all([loadComments(id), loadLog(id)]); }
+            catch (e) { toast(e.message, "danger"); }
         });
 
-        try {
-            await Promise.all([loadPrioridades(), loadEstatus(), loadClasificaciones(), loadEmpleados()]);
-        } catch (e) { toast(e.message, "danger"); }
+        try { await Promise.all([loadPrioridades(), loadEstatus(), loadClasificaciones(), loadEmpleados()]); }
+        catch (e) { toast(e.message, "danger"); }
         await loadTickets();
     });
 })();

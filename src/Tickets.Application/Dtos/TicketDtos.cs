@@ -10,7 +10,10 @@ public sealed class TicketFilterDto
     public byte? PrioridadId { get; set; }
     public int? SolicitanteId { get; set; }
     public byte? TipoSolicitud { get; set; }
-    public string? Period { get; set; } = "last2Years";
+
+    /// <summary>Rango de fechas de creación (inclusivo).</summary>
+    public DateOnly? Desde { get; set; }
+    public DateOnly? Hasta { get; set; }
 }
 
 /// <summary>Fila del listado (read model).</summary>

@@ -23,10 +23,10 @@ public sealed class TicketRepository(ISqlConnectionFactory connectionFactory) : 
         """;
 
     public async Task<IReadOnlyList<TicketListItemDto>> GetListAsync(
-        TicketFilterDto filter, DateTime? createdFrom, int maxRows, CancellationToken ct = default)
+        TicketFilterDto filter, int maxRows, CancellationToken ct = default)
     {
         var p = new DynamicParameters();
-        var where = BuildWhere(filter, createdFrom, p);
+        var where = BuildWhere(filter, p);
         p.Add("@Max", maxRows);
 
         var sql = $"""
@@ -185,7 +185,7 @@ public sealed class TicketRepository(ISqlConnectionFactory connectionFactory) : 
         return await conn.ExecuteAsync(new CommandDefinition(sql, p, cancellationToken: ct)) > 0;
     }
 
-    private static string BuildWhere(TicketFilterDto f, DateTime? createdFrom, DynamicParameters p)
+    private static string BuildWhere(TicketFilterDto f, DynamicParameters p)
     {
         var sb = new StringBuilder("WHERE t.IsActive = 1");
         if (f.EstatusId is not null) { sb.Append(" AND t.EstatusId = @EstatusId"); p.Add("@EstatusId", f.EstatusId.Value); }
@@ -193,7 +193,8 @@ public sealed class TicketRepository(ISqlConnectionFactory connectionFactory) : 
         if (f.PrioridadId is not null) { sb.Append(" AND t.PrioridadId = @PrioridadId"); p.Add("@PrioridadId", f.PrioridadId.Value); }
         if (f.SolicitanteId is not null) { sb.Append(" AND t.SolicitanteId = @SolicitanteId"); p.Add("@SolicitanteId", f.SolicitanteId.Value); }
         if (f.TipoSolicitud is not null) { sb.Append(" AND t.TipoSolicitud = @TipoSolicitud"); p.Add("@TipoSolicitud", f.TipoSolicitud.Value); }
-        if (createdFrom is not null) { sb.Append(" AND t.CreatedAt >= @CreatedFrom"); p.Add("@CreatedFrom", createdFrom.Value); }
+        if (f.Desde is not null) { sb.Append(" AND t.CreatedAt >= @Desde"); p.Add("@Desde", f.Desde.Value.ToDateTime(TimeOnly.MinValue)); }
+        if (f.Hasta is not null) { sb.Append(" AND t.CreatedAt < @Hasta"); p.Add("@Hasta", f.Hasta.Value.AddDays(1).ToDateTime(TimeOnly.MinValue)); }
         return sb.ToString();
     }
 }

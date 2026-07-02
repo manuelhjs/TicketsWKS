@@ -1,0 +1,79 @@
+@* Modales para alta rápida de catálogos (con auto-selección al crear). *@
+
+<!-- Nuevo solicitante -->
+<div class="modal fade" id="empleadoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="empleadoForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo solicitante</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" id="empNombre" class="form-control" required />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Correo (opcional)</label>
+                        <input type="email" id="empCorreo" class="form-control" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Teléfono (opcional)</label>
+                        <input type="tel" id="empTelefono" class="form-control" maxlength="10" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Nueva clasificación -->
+<div class="modal fade" id="clasificacionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="clasificacionForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva clasificación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="clasNombre" class="form-control" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Nueva categoría -->
+<div class="modal fade" id="categoriaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="categoriaForm">
+                <input type="hidden" id="catClasificacionId" />
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva categoría</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2 small text-muted">Clasificación: <strong id="catClasificacionNombre"></strong></div>
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="catNombre" class="form-control" required />
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

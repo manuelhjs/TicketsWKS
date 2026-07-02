@@ -26,7 +26,7 @@ public sealed partial class TicketService(
         => ticketRepository.GetDashboardAsync(ct);
 
     public Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
-        => ticketRepository.GetListAsync(filter, ResolvePeriod(filter.Period), 5000, ct);
+        => ticketRepository.GetListAsync(filter, 5000, ct);
 
     public async Task<TicketDetailDto> GetDetailAsync(int id, CancellationToken ct = default)
         => await ticketRepository.GetDetailAsync(id, ct)
@@ -242,17 +242,6 @@ public sealed partial class TicketService(
         }, ct);
 
     private static string? Trim(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
-
-    private static DateTime? ResolvePeriod(string? period) => period switch
-    {
-        null or "all" => null,
-        "lastMonth" => DateTime.Now.AddMonths(-1),
-        "last3Months" => DateTime.Now.AddMonths(-3),
-        "last6Months" => DateTime.Now.AddMonths(-6),
-        "lastYear" => DateTime.Now.AddYears(-1),
-        "last2Years" => DateTime.Now.AddYears(-2),
-        _ => DateTime.Now.AddYears(-2)
-    };
 
     [GeneratedRegex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$")]
     private static partial Regex EmailRegex();
