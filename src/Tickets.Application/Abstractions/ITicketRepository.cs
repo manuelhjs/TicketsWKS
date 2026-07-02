@@ -1,4 +1,3 @@
-using Tickets.Application.Common;
 using Tickets.Application.Dtos;
 using Tickets.Domain.Entities;
 using Tickets.Domain.Enums;
@@ -7,7 +6,11 @@ namespace Tickets.Application.Abstractions;
 
 public interface ITicketRepository
 {
-    Task<PagedResult<TicketListItemDto>> QueryAsync(TicketQuery query, CancellationToken ct = default);
+    /// <summary>Lista filtrada (sin paginación de servidor; el tope es query.MaxRows).</summary>
+    Task<IReadOnlyList<TicketListItemDto>> GetListAsync(TicketQuery query, CancellationToken ct = default);
+
+    /// <summary>Detalle de un ticket como read model (para el modal). Null si no existe o está inactivo.</summary>
+    Task<TicketListItemDto?> GetListItemByIdAsync(int id, CancellationToken ct = default);
 
     Task<DashboardDto> GetDashboardAsync(TicketQuery query, CancellationToken ct = default);
 

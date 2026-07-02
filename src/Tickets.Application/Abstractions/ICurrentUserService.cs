@@ -1,3 +1,5 @@
+using Tickets.Domain.Enums;
+
 namespace Tickets.Application.Abstractions;
 
 /// <summary>
@@ -7,14 +9,18 @@ namespace Tickets.Application.Abstractions;
 public interface ICurrentUserService
 {
     string UserCode { get; }
+
+    // Datos para la cabecera de la pantalla
+    string FullName { get; }
     string? DepartmentCode { get; }
+    string? DepartmentName { get; }
+    string? Position { get; }
 
-    /// <summary>Puede ver todos los tickets (rol de seguimiento), no solo los propios.</summary>
-    bool CanSeeAllTickets { get; }
+    TicketRole Role { get; }
 
-    /// <summary>Puede ver los tickets de todo su departamento.</summary>
-    bool CanSeeDepartmentTickets { get; }
+    /// <summary>Rol TI: acceso completo.</summary>
+    bool IsIt { get; }
 
-    /// <summary>Puede administrar tickets (cambiar responsable, inactivar, cambiar tipo).</summary>
+    /// <summary>Puede administrar tickets (cambiar estatus, responsable, tipo, inactivar). Solo TI.</summary>
     bool CanManageTickets { get; }
 }

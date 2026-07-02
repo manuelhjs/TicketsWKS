@@ -6,7 +6,13 @@ namespace Tickets.Application.Abstractions;
 public interface ITicketService
 {
     Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default);
-    Task<PagedResult<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default);
+
+    /// <summary>Lista filtrada según rol/visibilidad. DataTables la pagina en cliente.</summary>
+    Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default);
+
+    /// <summary>Detalle para el modal, con validación de propiedad/estatus según rol.</summary>
+    Task<TicketListItemDto> GetDetailAsync(int id, CancellationToken ct = default);
+
     Task<FilterOptionsDto> GetFilterOptionsAsync(CancellationToken ct = default);
 
     Task<int> CreateAsync(CreateTicketRequest request, CancellationToken ct = default);

@@ -8,7 +8,7 @@ namespace Tickets.Application.Services;
 
 /// <summary>
 /// Lógica de negocio de tickets. Los controladores solo orquestan; aquí viven las
-/// reglas (visibilidad, validaciones, transiciones de estatus, autorización).
+/// reglas (visibilidad por rol, validaciones, transiciones de estatus, autorización).
 /// </summary>
 public sealed class TicketService(
     ITicketRepository ticketRepository,
@@ -16,10 +16,13 @@ public sealed class TicketService(
     IUserDirectoryRepository userDirectory,
     ICurrentUserService currentUser) : ITicketService
 {
+    /// <summary>Rol Usuario: solo ve sus tickets en estado Creado o Cerrado.</summary>
+    private static readonly TicketStatus[] UserVisibleStatuses = [TicketStatus.Open, TicketStatus.Closed];
+
     public async Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default)
         => await ticketRepository.GetDashboardAsync(BuildVisibility(), ct);
 
-    public async Task<PagedResult<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
     {
         var query = BuildVisibility() with
         {
@@ -28,14 +31,30 @@ public sealed class TicketService(
             TicketTypeId = filter.TicketTypeId,
             DepartmentCode = NullIfBlank(filter.DepartmentCode),
             ResponsibleUserCode = NullIfBlank(filter.ResponsibleUserCode),
-            CreatedFrom = ResolvePeriod(filter.Period),
-            Page = filter.Page < 1 ? 1 : filter.Page,
-            PageSize = filter.PageSize is < 1 or > 500 ? 50 : filter.PageSize
+            CreatedFrom = ResolvePeriod(filter.Period)
         };
 
-        var page = await ticketRepository.QueryAsync(query, ct);
-        await EnrichWithUserNamesAsync(page.Items, ct);
-        return page;
+        var items = await ticketRepository.GetListAsync(query, ct);
+        await EnrichWithUserNamesAsync(items, ct);
+        return items;
+    }
+
+    public async Task<TicketListItemDto> GetDetailAsync(int id, CancellationToken ct = default)
+    {
+        var dto = await ticketRepository.GetListItemByIdAsync(id, ct)
+            ?? throw new NotFoundException($"Ticket {id} no encontrado.");
+
+        // Rol Usuario: solo puede abrir sus propios tickets en estado Creado o Cerrado.
+        if (!currentUser.IsIt)
+        {
+            if (!string.Equals(dto.RequesterUserCode, currentUser.UserCode, StringComparison.OrdinalIgnoreCase))
+                throw new ForbiddenException("No tiene permiso para ver este ticket.");
+            if (!UserVisibleStatuses.Contains(dto.Status))
+                throw new ForbiddenException("No tiene permiso para ver este ticket.");
+        }
+
+        await EnrichWithUserNamesAsync([dto], ct);
+        return dto;
     }
 
     public async Task<FilterOptionsDto> GetFilterOptionsAsync(CancellationToken ct = default)
@@ -116,6 +135,7 @@ public sealed class TicketService(
 
     public async Task UpdateStatusAsync(UpdateTicketStatusRequest request, CancellationToken ct = default)
     {
+        EnsureCanManage();
         var ticket = await ticketRepository.GetByIdAsync(request.TicketId, ct)
             ?? throw new NotFoundException($"Ticket {request.TicketId} no encontrado.");
 
@@ -144,6 +164,7 @@ public sealed class TicketService(
 
     public async Task UpdateEstimatedCloseDateAsync(UpdateEstimatedCloseDateRequest request, CancellationToken ct = default)
     {
+        EnsureCanManage();
         await EnsureExistsAsync(request.TicketId, ct);
         var ok = await ticketRepository.UpdateEstimatedCloseDateAsync(request.TicketId, request.EstimatedCloseDate, ct);
         if (!ok) throw new ValidationException("No se pudo actualizar la fecha estimada de cierre.");
@@ -151,8 +172,7 @@ public sealed class TicketService(
 
     public async Task UpdateResponsibleAsync(UpdateResponsibleRequest request, CancellationToken ct = default)
     {
-        if (!currentUser.CanManageTickets)
-            throw new ForbiddenException("No tiene permiso para cambiar el responsable.");
+        EnsureCanManage();
         if (string.IsNullOrWhiteSpace(request.ResponsibleUserCode))
             throw new ValidationException("El responsable no es válido.");
 
@@ -163,9 +183,7 @@ public sealed class TicketService(
 
     public async Task UpdateCategoryAsync(UpdateCategoryRequest request, CancellationToken ct = default)
     {
-        if (!currentUser.CanManageTickets)
-            throw new ForbiddenException("No tiene permiso para cambiar el tipo de ticket.");
-
+        EnsureCanManage();
         await EnsureExistsAsync(request.TicketId, ct);
         var ok = await ticketRepository.UpdateCategoryAsync(request.TicketId, request.Category, ct);
         if (!ok) throw new ValidationException("No se pudo actualizar el tipo de ticket.");
@@ -173,9 +191,7 @@ public sealed class TicketService(
 
     public async Task SetInactiveAsync(int id, CancellationToken ct = default)
     {
-        if (!currentUser.CanManageTickets)
-            throw new ForbiddenException("No tiene permiso para inactivar tickets.");
-
+        EnsureCanManage();
         await EnsureExistsAsync(id, ct);
         var ok = await ticketRepository.SetInactiveAsync(id, ct);
         if (!ok) throw new ValidationException("No se pudo inactivar el ticket.");
@@ -190,6 +206,12 @@ public sealed class TicketService(
 
     // ---------- Helpers privados ----------
 
+    private void EnsureCanManage()
+    {
+        if (!currentUser.CanManageTickets)
+            throw new ForbiddenException("No tiene permiso para realizar esta acción.");
+    }
+
     private async Task EnsureExistsAsync(int id, CancellationToken ct)
     {
         _ = await ticketRepository.GetByIdAsync(id, ct)
@@ -198,15 +220,15 @@ public sealed class TicketService(
 
     private TicketQuery BuildVisibility()
     {
-        // Un usuario que puede ver todos: sin restricción.
-        // Si no, ve por departamento (si tiene el permiso) o solo los propios.
-        var seeAll = currentUser.CanSeeAllTickets;
+        // Rol TI: sin restricción. Rol Usuario: solo sus tickets, en estado Creado o Cerrado.
+        if (currentUser.IsIt)
+            return new TicketQuery();
+
         return new TicketQuery
         {
-            RestrictToRequester = !seeAll && !currentUser.CanSeeDepartmentTickets,
-            RestrictToDepartment = !seeAll && currentUser.CanSeeDepartmentTickets,
+            RestrictToRequester = true,
             CurrentUserCode = currentUser.UserCode,
-            CurrentDepartmentCode = currentUser.DepartmentCode
+            RestrictToStatuses = UserVisibleStatuses
         };
     }
 
@@ -259,7 +281,6 @@ public sealed class TicketService(
 
     private static string ResolveDepartmentName(IReadOnlyDictionary<string, DirectoryUser> directory, string code)
     {
-        // Resuelve el nombre del departamento a partir de cualquier usuario de ese departamento.
         var match = directory.Values.FirstOrDefault(u =>
             string.Equals(u.DepartmentCode, code, StringComparison.OrdinalIgnoreCase)
             && !string.IsNullOrWhiteSpace(u.DepartmentName));

@@ -85,6 +85,17 @@ dotnet test
 | Notificaciones por correo | **Omitidas** en esta versión (el legacy enviaba correos desde la entidad). |
 | Organización | Multi-proyecto por capas. |
 
+## Vista principal (roles y UI)
+
+- **Cabecera de usuario:** nombre completo, **nombre** del departamento (no el código) y puesto. Nombre/depto se resuelven del directorio SAP (`VL_USUARIOS`) por código; el puesto y el rol vienen de configuración (`CurrentUser`).
+- **Roles / modos de vista** (`CurrentUser:Role` = `It` | `User`):
+  - **Modo TI:** acceso completo (ver/crear/editar/cambiar estatus de todos los tickets).
+  - **Modo Usuario:** solo ve los tickets que él creó y únicamente en estatus **Creado** o **Cerrado** (no ve los de otros ni el estatus En Proceso). Puede crear tickets y comentar/adjuntar en los propios; el resto es de solo lectura. Las reglas se aplican en el servicio (no solo en la UI): intentar abrir o editar un ticket ajeno devuelve 403.
+- **Creación:** formulario **embebido** en la pantalla (colapsable), ubicado antes de los filtros. Mantiene las validaciones (área CAL exige depto. calidad/monto/cantidad; área PD exige máquina).
+- **Edición:** sin edición inline. Al hacer clic en una fila se abre un **modal de detalle**; los campos editables (estatus, responsable, fecha estimada, tipo, inactivar) se habilitan solo en modo TI. Comentarios y adjuntos dentro del mismo modal.
+- **Tabla:** **DataTables** (Bootstrap 5) con paginación, búsqueda y ordenamiento por columna.
+  - **Client-side sobre el resultado ya filtrado en servidor**: los filtros (estatus, período, solicitante, clasificación, departamento, responsable) se resuelven en SQL parametrizado; DataTables hace búsqueda/orden/paginación en el navegador sobre ese subconjunto (tope `TicketQuery.MaxRows` = 5000). Conviene por el volumen esperado tras los filtros; si un filtro superara ~5–10k filas de forma habitual, migrar a server-side (`serverSide: true` + endpoint paginado).
+
 ## Correspondencia legacy → nuevo
 
 | Legacy (PROAMASTER) | Nuevo |

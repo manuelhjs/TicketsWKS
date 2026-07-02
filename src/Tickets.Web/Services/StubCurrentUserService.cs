@@ -1,4 +1,5 @@
 using Tickets.Application.Abstractions;
+using Tickets.Domain.Enums;
 
 namespace Tickets.Web.Services;
 
@@ -13,15 +14,19 @@ public sealed class StubCurrentUserService : ICurrentUserService
     {
         var section = configuration.GetSection("CurrentUser");
         UserCode = section["UserCode"] ?? "demo";
+        FullName = section["FullName"] ?? UserCode;
         DepartmentCode = section["DepartmentCode"];
-        CanSeeAllTickets = section.GetValue("CanSeeAllTickets", true);
-        CanSeeDepartmentTickets = section.GetValue("CanSeeDepartmentTickets", false);
-        CanManageTickets = section.GetValue("CanManageTickets", true);
+        DepartmentName = section["DepartmentName"] ?? DepartmentCode;
+        Position = section["Position"];
+        Role = Enum.TryParse<TicketRole>(section["Role"], ignoreCase: true, out var role) ? role : TicketRole.It;
     }
 
     public string UserCode { get; }
+    public string FullName { get; }
     public string? DepartmentCode { get; }
-    public bool CanSeeAllTickets { get; }
-    public bool CanSeeDepartmentTickets { get; }
-    public bool CanManageTickets { get; }
+    public string? DepartmentName { get; }
+    public string? Position { get; }
+    public TicketRole Role { get; }
+    public bool IsIt => Role == TicketRole.It;
+    public bool CanManageTickets => Role == TicketRole.It;
 }

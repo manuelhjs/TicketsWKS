@@ -1,7 +1,6 @@
 using System.Text;
 using Dapper;
 using Tickets.Application.Abstractions;
-using Tickets.Application.Common;
 using Tickets.Application.Dtos;
 using Tickets.Domain.Entities;
 using Tickets.Domain.Enums;
@@ -42,31 +41,35 @@ public sealed class TicketRepository(ISqlConnectionFactory connectionFactory) : 
         INNER JOIN dbo.TicketStatuses s  ON s.Id  = t.StatusId
         """;
 
-    public async Task<PagedResult<TicketListItemDto>> QueryAsync(TicketQuery query, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketListItemDto>> GetListAsync(TicketQuery query, CancellationToken ct = default)
     {
         var parameters = new DynamicParameters();
         var where = BuildWhere(query, parameters, includeFilters: true);
-
-        parameters.Add("@Offset", (query.Page - 1) * query.PageSize);
-        parameters.Add("@PageSize", query.PageSize);
+        parameters.Add("@Max", query.MaxRows);
 
         var sql = $"""
-            SELECT {BaseColumns}
+            SELECT TOP (@Max) {BaseColumns}
             {FromJoins}
             {where}
-            ORDER BY t.CreatedAt DESC
-            OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
-
-            SELECT COUNT(1) {FromJoins} {where};
+            ORDER BY t.CreatedAt DESC;
             """;
 
         await using var conn = connectionFactory.CreateTicketsConnection();
-        await using var grid = await conn.QueryMultipleAsync(new CommandDefinition(sql, parameters, cancellationToken: ct));
+        var rows = await conn.QueryAsync<TicketListItemDto>(new CommandDefinition(sql, parameters, cancellationToken: ct));
+        return rows.ToList();
+    }
 
-        var items = (await grid.ReadAsync<TicketListItemDto>()).ToList();
-        var total = await grid.ReadSingleAsync<int>();
+    public async Task<TicketListItemDto?> GetListItemByIdAsync(int id, CancellationToken ct = default)
+    {
+        var sql = $"""
+            SELECT {BaseColumns}
+            {FromJoins}
+            WHERE t.Id = @Id AND t.IsActive = 1;
+            """;
 
-        return new PagedResult<TicketListItemDto> { Items = items, Total = total };
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.QuerySingleOrDefaultAsync<TicketListItemDto>(
+            new CommandDefinition(sql, new { Id = id }, cancellationToken: ct));
     }
 
     public async Task<DashboardDto> GetDashboardAsync(TicketQuery query, CancellationToken ct = default)
@@ -223,16 +226,17 @@ public sealed class TicketRepository(ISqlConnectionFactory connectionFactory) : 
     {
         var sb = new StringBuilder("WHERE t.IsActive = 1");
 
-        // Visibilidad por usuario / departamento
+        // Visibilidad por rol: el rol Usuario solo ve sus tickets y solo ciertos estatus.
         if (q.RestrictToRequester)
         {
             sb.Append(" AND t.RequesterUserCode = @CurrentUserCode");
             parameters.Add("@CurrentUserCode", q.CurrentUserCode);
         }
-        else if (q.RestrictToDepartment)
+        if (q.RestrictToStatuses is { Count: > 0 })
         {
-            sb.Append(" AND t.DepartmentCode = @CurrentDepartmentCode");
-            parameters.Add("@CurrentDepartmentCode", q.CurrentDepartmentCode);
+            // int[] (no byte[]): Dapper trata byte[] como binario y no expande el IN.
+            sb.Append(" AND t.StatusId IN @RestrictStatuses");
+            parameters.Add("@RestrictStatuses", q.RestrictToStatuses.Select(s => (int)s).ToArray());
         }
 
         if (!includeFilters) return sb.ToString();

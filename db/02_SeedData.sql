@@ -9,7 +9,7 @@ GO
 /* Catálogo de estatus (Ids estables usados por el enum TicketStatus en C#) */
 MERGE dbo.TicketStatuses AS target
 USING (VALUES
-    (1, N'A',  N'Abierto'),
+    (1, N'A',  N'Creado'),
     (2, N'EP', N'En Proceso'),
     (3, N'C',  N'Cerrado')
 ) AS src (Id, Code, Name)

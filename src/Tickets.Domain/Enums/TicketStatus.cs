@@ -6,7 +6,7 @@ namespace Tickets.Domain.Enums;
 /// </summary>
 public enum TicketStatus : byte
 {
-    Open = 1,
-    InProgress = 2,
-    Closed = 3
+    Open = 1,        // "Creado"
+    InProgress = 2,  // "En Proceso"
+    Closed = 3       // "Cerrado"
 }

@@ -17,21 +17,30 @@
     color: #6c757d;
 }
 
-.ticket-table-wrap {
-    max-height: calc(100vh - 320px);
-    overflow: auto;
+/* Cabecera de usuario */
+.user-header .user-avatar {
+    font-size: 2.5rem;
+    color: #0d6efd;
+    line-height: 1;
 }
 
-#ticketsTable th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    white-space: nowrap;
+.user-header .user-name {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.user-header .user-meta {
+    font-size: .85rem;
+    color: #6c757d;
 }
 
 #ticketsTable td {
     font-size: .85rem;
     vertical-align: middle;
+}
+
+#ticketsTable tbody tr {
+    cursor: pointer;
 }
 
 .comments-list {

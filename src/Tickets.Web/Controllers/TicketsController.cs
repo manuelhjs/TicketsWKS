@@ -16,16 +16,33 @@ public sealed class TicketsController(
     ITicketCommentService commentService,
     ICatalogService catalogService,
     ICurrentUserService currentUser,
+    IUserDirectoryRepository userDirectory,
     IFileStorage fileStorage) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
+        // Datos de cabecera: se prefieren los del directorio SAP (nombre real y
+        // nombre de departamento); si no está disponible, se usan los de configuración.
+        var fullName = currentUser.FullName;
+        var departmentName = currentUser.DepartmentName ?? currentUser.DepartmentCode;
+
+        var dirUsers = await userDirectory.GetByCodesAsync([currentUser.UserCode], ct);
+        var me = dirUsers.FirstOrDefault();
+        if (me is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(me.Name)) fullName = me.Name;
+            if (!string.IsNullOrWhiteSpace(me.DepartmentName)) departmentName = me.DepartmentName;
+        }
+
         var model = new TicketsIndexViewModel
         {
             Dashboard = await ticketService.GetDashboardAsync(ct),
-            CanManage = currentUser.CanManageTickets,
-            UserCode = currentUser.UserCode
+            IsIt = currentUser.IsIt,
+            UserCode = currentUser.UserCode,
+            FullName = fullName,
+            DepartmentName = departmentName ?? "—",
+            Position = currentUser.Position ?? "—"
         };
         return View(model);
     }
@@ -33,9 +50,13 @@ public sealed class TicketsController(
     [HttpGet]
     public async Task<IActionResult> GetTickets([FromQuery] TicketFilterDto filter, CancellationToken ct)
     {
-        var result = await ticketService.GetTicketsAsync(filter, ct);
-        return Json(new { success = true, items = result.Items, total = result.Total });
+        var items = await ticketService.GetTicketsAsync(filter, ct);
+        return Json(new { success = true, items });
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetTicket(int id, CancellationToken ct)
+        => Json(new { success = true, data = await ticketService.GetDetailAsync(id, ct) });
 
     [HttpGet]
     public async Task<IActionResult> GetDashboard(CancellationToken ct)
