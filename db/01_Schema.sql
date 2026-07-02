@@ -20,11 +20,10 @@
    - Índices en columnas de filtro y FKs.
    ===================================================================== */
 
-IF DB_ID('TicketsDb') IS NULL
-    CREATE DATABASE TicketsDb;
-GO
-
-USE TicketsDb;
+-- Las tablas se crean dentro de la base de SAP B1_PROA_MX_V2 (destino de la
+-- cadena de conexión TicketsDb). Para una base independiente, usa en su lugar:
+--   IF DB_ID('TicketsDb') IS NULL CREATE DATABASE TicketsDb;  GO  USE TicketsDb; GO
+USE B1_PROA_MX_V2;
 GO
 
 /* ---------------------------------------------------------------------

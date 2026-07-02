@@ -51,10 +51,16 @@ sqlcmd -S "(localdb)\MSSQLLocalDB" -f 65001 -i db/02_SeedData.sql
 
 ### 2. Configuración
 
-`src/Tickets.Web/appsettings.Development.json` ya apunta a LocalDB. Ajusta `ConnectionStrings:TicketsDb` según tu servidor.
+Cadenas de conexión (fijas a la base de SAP **B1_PROA_MX_V2**):
+
+- `appsettings.json` → servidor de **test/QA** `192.168.7.62` (usuario `sa`). Es la base por defecto y la que hereda *Development*.
+- `appsettings.Production.json` → servidor de **producción** `db1-19.doorgroup.local` (usuario `sap_sa_2`). Se aplica al correr con `ASPNETCORE_ENVIRONMENT=Production`.
+- Las tablas nuevas viven **dentro de B1_PROA_MX_V2** (junto a las de SAP); ejecuta ahí el script `db/TicketsDb_Full.sql`.
+
+> ⚠️ **Seguridad:** las credenciales están en texto plano (por paridad con PROAMASTER). Para un despliegue real, muévelas a **User Secrets** / variables de entorno / Azure Key Vault, y **no** subas los `appsettings*.json` con contraseñas al control de versiones.
 
 - `CurrentUser`: usuario stub (no hay auth en esta versión). Controla visibilidad/permisos.
-- `ConnectionStrings:SapDirectory`: **opcional**. Si se configura, se resuelven nombres de usuario desde la vista externa de SAP (`Sap:UsersView`, por defecto `dbo.VL_USUARIOS`); si se deja vacío, los nombres se muestran con el código.
+- `ConnectionStrings:SapDirectory`: apunta a la misma B1_PROA_MX_V2, de modo que los nombres de solicitante/responsable se resuelven desde `VL_USUARIOS` (`Sap:UsersView`, por defecto `dbo.VL_USUARIOS`). Si se deja vacío, los nombres se muestran con el código.
 - `Attachments:Path`: carpeta de adjuntos (por defecto `<contentRoot>/attachments`).
 
 ### 3. Ejecutar

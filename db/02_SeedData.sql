@@ -3,7 +3,7 @@
    Los códigos de usuario (RequesterUserCode, etc.) son referencias
    externas a SAP; aquí se usan valores de ejemplo.
    ===================================================================== */
-USE TicketsDb;
+USE B1_PROA_MX_V2;
 GO
 
 /* Catálogo de estatus (Ids estables usados por el enum TicketStatus en C#) */

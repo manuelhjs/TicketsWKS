@@ -8,16 +8,18 @@
        sqlcmd -S TU_SERVIDOR -f 65001 -i TicketsDb_Full.sql
      (con autenticación SQL agrega: -U usuario -P password)
 
-   Requiere permisos para crear base de datos. Si la base ya existe con
-   otro nombre, ajusta 'TicketsDb' en los dos primeros bloques.
+   Las tablas se crean DENTRO de la base de SAP B1_PROA_MX_V2 (junto a las
+   tablas del sistema), que es a donde apunta la cadena de conexión TicketsDb.
+   Si prefieres una base independiente, reemplaza el bloque 1 por:
+       IF DB_ID('TicketsDb') IS NULL CREATE DATABASE TicketsDb;
+       GO
+       USE TicketsDb;
+       GO
+   y ajusta el Initial Catalog de la cadena de conexión al mismo nombre.
    ===================================================================== */
 
-/* ---------- 1. Base de datos ---------- */
-IF DB_ID('TicketsDb') IS NULL
-    CREATE DATABASE TicketsDb;
-GO
-
-USE TicketsDb;
+/* ---------- 1. Base de datos destino ---------- */
+USE B1_PROA_MX_V2;
 GO
 
 /* ---------- 2. Catálogo de estatus ----------

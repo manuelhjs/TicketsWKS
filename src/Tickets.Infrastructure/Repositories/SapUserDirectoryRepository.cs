@@ -22,8 +22,10 @@ public sealed class SapUserDirectoryRepository(ISqlConnectionFactory connectionF
         if (conn is null) return [];
 
         // El nombre de la vista viene de configuración (no de entrada de usuario) -> interpolación segura.
+        // Columnas confirmadas en VL_USUARIOS (SAP). Se omite Email: el legacy no lo
+        // expone en esta vista y las notificaciones están fuera de alcance.
         var sql = $"""
-            SELECT Code, Nombre AS Name, Email, DepCode AS DepartmentCode, DepName AS DepartmentName
+            SELECT Code, Nombre AS Name, DepCode AS DepartmentCode, DepName AS DepartmentName
             FROM {usersView}
             WHERE Code IN @Codes;
             """;
