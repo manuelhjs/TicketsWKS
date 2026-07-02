@@ -23,8 +23,7 @@ public class TicketServiceTests
     private TicketService CreateSut()
     {
         _currentUser.SetupGet(x => x.UserCode).Returns("demo");
-        _currentUser.SetupGet(x => x.DepartmentCode).Returns("SIS");
-        _currentUser.SetupGet(x => x.CanManageTickets).Returns(true);
+        _currentUser.SetupGet(x => x.DepartmentCode).Returns("CC-01");
         _directory.Setup(x => x.GetByCodesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
         return new TicketService(_ticketRepo.Object, _catalogRepo.Object, _directory.Object, _currentUser.Object);
@@ -93,16 +92,11 @@ public class TicketServiceTests
     }
 
     [Fact]
-    public async Task UpdateResponsibleAsync_WithoutPermission_Throws()
+    public async Task UpdateResponsibleAsync_BlankResponsible_Throws()
     {
-        _currentUser.SetupGet(x => x.UserCode).Returns("demo");
-        _currentUser.SetupGet(x => x.CanManageTickets).Returns(false);
-        _directory.Setup(x => x.GetByCodesAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
-        var sut = new TicketService(_ticketRepo.Object, _catalogRepo.Object, _directory.Object, _currentUser.Object);
+        var sut = CreateSut();
+        var req = new UpdateResponsibleRequest { TicketId = 1, ResponsibleUserCode = "  " };
 
-        var req = new UpdateResponsibleRequest { TicketId = 1, ResponsibleUserCode = "x" };
-
-        await Assert.ThrowsAsync<ForbiddenException>(() => sut.UpdateResponsibleAsync(req));
+        await Assert.ThrowsAsync<ValidationException>(() => sut.UpdateResponsibleAsync(req));
     }
 }

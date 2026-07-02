@@ -1,12 +1,12 @@
 using Tickets.Application.Abstractions;
-using Tickets.Domain.Enums;
 
 namespace Tickets.Web.Services;
 
 /// <summary>
 /// Implementación temporal de ICurrentUserService (sin autenticación).
-/// Toma los valores de la sección "CurrentUser" de appsettings.
-/// Al integrar auth real, se sustituye por una que lea el ClaimsPrincipal.
+/// Toma el código de usuario de la sección "CurrentUser" de appsettings; el nombre,
+/// departamento y puesto se resuelven del directorio SAP (VL_Usuarios) en el controlador.
+/// Los valores de configuración se usan solo como respaldo.
 /// </summary>
 public sealed class StubCurrentUserService : ICurrentUserService
 {
@@ -18,7 +18,6 @@ public sealed class StubCurrentUserService : ICurrentUserService
         DepartmentCode = section["DepartmentCode"];
         DepartmentName = section["DepartmentName"] ?? DepartmentCode;
         Position = section["Position"];
-        Role = Enum.TryParse<TicketRole>(section["Role"], ignoreCase: true, out var role) ? role : TicketRole.It;
     }
 
     public string UserCode { get; }
@@ -26,7 +25,4 @@ public sealed class StubCurrentUserService : ICurrentUserService
     public string? DepartmentCode { get; }
     public string? DepartmentName { get; }
     public string? Position { get; }
-    public TicketRole Role { get; }
-    public bool IsIt => Role == TicketRole.It;
-    public bool CanManageTickets => Role == TicketRole.It;
 }

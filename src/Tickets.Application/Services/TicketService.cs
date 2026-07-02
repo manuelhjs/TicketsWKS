@@ -8,7 +8,8 @@ namespace Tickets.Application.Services;
 
 /// <summary>
 /// Lógica de negocio de tickets. Los controladores solo orquestan; aquí viven las
-/// reglas (visibilidad por rol, validaciones, transiciones de estatus, autorización).
+/// reglas (validaciones, transiciones de estatus, resolución de nombres).
+/// Sin roles: todos los usuarios tienen acceso completo.
 /// </summary>
 public sealed class TicketService(
     ITicketRepository ticketRepository,
@@ -16,15 +17,12 @@ public sealed class TicketService(
     IUserDirectoryRepository userDirectory,
     ICurrentUserService currentUser) : ITicketService
 {
-    /// <summary>Rol Usuario: solo ve sus tickets en estado Creado o Cerrado.</summary>
-    private static readonly TicketStatus[] UserVisibleStatuses = [TicketStatus.Open, TicketStatus.Closed];
-
     public async Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default)
-        => await ticketRepository.GetDashboardAsync(BuildVisibility(), ct);
+        => await ticketRepository.GetDashboardAsync(new TicketQuery(), ct);
 
     public async Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
     {
-        var query = BuildVisibility() with
+        var query = new TicketQuery
         {
             Status = filter.Status,
             RequesterUserCode = NullIfBlank(filter.RequesterUserCode),
@@ -44,22 +42,13 @@ public sealed class TicketService(
         var dto = await ticketRepository.GetListItemByIdAsync(id, ct)
             ?? throw new NotFoundException($"Ticket {id} no encontrado.");
 
-        // Rol Usuario: solo puede abrir sus propios tickets en estado Creado o Cerrado.
-        if (!currentUser.IsIt)
-        {
-            if (!string.Equals(dto.RequesterUserCode, currentUser.UserCode, StringComparison.OrdinalIgnoreCase))
-                throw new ForbiddenException("No tiene permiso para ver este ticket.");
-            if (!UserVisibleStatuses.Contains(dto.Status))
-                throw new ForbiddenException("No tiene permiso para ver este ticket.");
-        }
-
         await EnrichWithUserNamesAsync([dto], ct);
         return dto;
     }
 
     public async Task<FilterOptionsDto> GetFilterOptionsAsync(CancellationToken ct = default)
     {
-        var visibility = BuildVisibility();
+        var visibility = new TicketQuery();
 
         var requesterCodes = await ticketRepository.GetDistinctRequesterCodesAsync(visibility, ct);
         var departmentCodes = await ticketRepository.GetDistinctDepartmentCodesAsync(visibility, ct);
@@ -135,7 +124,6 @@ public sealed class TicketService(
 
     public async Task UpdateStatusAsync(UpdateTicketStatusRequest request, CancellationToken ct = default)
     {
-        EnsureCanManage();
         var ticket = await ticketRepository.GetByIdAsync(request.TicketId, ct)
             ?? throw new NotFoundException($"Ticket {request.TicketId} no encontrado.");
 
@@ -164,7 +152,6 @@ public sealed class TicketService(
 
     public async Task UpdateEstimatedCloseDateAsync(UpdateEstimatedCloseDateRequest request, CancellationToken ct = default)
     {
-        EnsureCanManage();
         await EnsureExistsAsync(request.TicketId, ct);
         var ok = await ticketRepository.UpdateEstimatedCloseDateAsync(request.TicketId, request.EstimatedCloseDate, ct);
         if (!ok) throw new ValidationException("No se pudo actualizar la fecha estimada de cierre.");
@@ -172,7 +159,6 @@ public sealed class TicketService(
 
     public async Task UpdateResponsibleAsync(UpdateResponsibleRequest request, CancellationToken ct = default)
     {
-        EnsureCanManage();
         if (string.IsNullOrWhiteSpace(request.ResponsibleUserCode))
             throw new ValidationException("El responsable no es válido.");
 
@@ -183,7 +169,6 @@ public sealed class TicketService(
 
     public async Task UpdateCategoryAsync(UpdateCategoryRequest request, CancellationToken ct = default)
     {
-        EnsureCanManage();
         await EnsureExistsAsync(request.TicketId, ct);
         var ok = await ticketRepository.UpdateCategoryAsync(request.TicketId, request.Category, ct);
         if (!ok) throw new ValidationException("No se pudo actualizar el tipo de ticket.");
@@ -191,7 +176,6 @@ public sealed class TicketService(
 
     public async Task SetInactiveAsync(int id, CancellationToken ct = default)
     {
-        EnsureCanManage();
         await EnsureExistsAsync(id, ct);
         var ok = await ticketRepository.SetInactiveAsync(id, ct);
         if (!ok) throw new ValidationException("No se pudo inactivar el ticket.");
@@ -206,30 +190,10 @@ public sealed class TicketService(
 
     // ---------- Helpers privados ----------
 
-    private void EnsureCanManage()
-    {
-        if (!currentUser.CanManageTickets)
-            throw new ForbiddenException("No tiene permiso para realizar esta acción.");
-    }
-
     private async Task EnsureExistsAsync(int id, CancellationToken ct)
     {
         _ = await ticketRepository.GetByIdAsync(id, ct)
             ?? throw new NotFoundException($"Ticket {id} no encontrado.");
-    }
-
-    private TicketQuery BuildVisibility()
-    {
-        // Rol TI: sin restricción. Rol Usuario: solo sus tickets, en estado Creado o Cerrado.
-        if (currentUser.IsIt)
-            return new TicketQuery();
-
-        return new TicketQuery
-        {
-            RestrictToRequester = true,
-            CurrentUserCode = currentUser.UserCode,
-            RestrictToStatuses = UserVisibleStatuses
-        };
     }
 
     private static DateTime? ResolvePeriod(string? period) => period switch
@@ -259,8 +223,16 @@ public sealed class TicketService(
             item.ResponsibleName = string.IsNullOrWhiteSpace(item.ResponsibleUserCode)
                 ? null : ResolveName(directory, item.ResponsibleUserCode!);
 
-            if (string.IsNullOrWhiteSpace(item.DepartmentName) && !string.IsNullOrWhiteSpace(item.DepartmentCode))
-                item.DepartmentName = ResolveDepartmentName(directory, item.DepartmentCode!);
+            // El nombre del departamento se toma del solicitante (VL_Usuarios ya trae DepName vía OOCR).
+            if (directory.TryGetValue(item.RequesterUserCode, out var requester)
+                && !string.IsNullOrWhiteSpace(requester.DepartmentName))
+            {
+                item.DepartmentName = requester.DepartmentName;
+            }
+            else if (string.IsNullOrWhiteSpace(item.DepartmentName))
+            {
+                item.DepartmentName = item.DepartmentCode;
+            }
         }
     }
 

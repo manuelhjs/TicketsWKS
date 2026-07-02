@@ -130,7 +130,7 @@
             order: [[0, "desc"]],
             pageLength: 25,
             columns: [
-                { data: "id" },
+                { data: "id", render: d => '<span class="fw-semibold text-primary">#' + d + '</span>' },
                 { data: "ticketTypeName", defaultContent: "—" },
                 { data: "requesterName", render: (d, t, row) => escapeHtml(d || row.requesterUserCode) },
                 { data: "departmentName", render: (d, t, row) => escapeHtml(d || row.departmentCode || "—") },
@@ -138,10 +138,15 @@
                 { data: "createdAt", render: fmtDate },
                 { data: "status", render: statusBadge },
                 { data: "estimatedCloseDate", render: fmtDate },
-                { data: "closedAt", render: fmtDate }
+                { data: "closedAt", render: fmtDate },
+                {
+                    data: null, orderable: false, searchable: false, className: "text-center",
+                    render: () => '<button type="button" class="btn btn-sm btn-primary js-view">Ver</button>'
+                }
             ]
         });
 
+        // Clic en cualquier parte de la fila (incluido el botón "Ver") abre el detalle.
         $("#ticketsTable tbody").on("click", "tr", function () {
             const data = state.table.row(this).data();
             if (data) openDetail(data.id);
@@ -195,18 +200,13 @@
         el("btnDtlUpload").dataset.id = t.id;
         el("dtlCommentTicketId").value = t.id;
 
-        // Gestión (solo TI)
+        // Gestión (acceso completo, sin roles)
         const manage = el("dtlManage");
-        if (cfg.isIt) {
-            manage.classList.remove("d-none");
-            manage.dataset.id = t.id;
-            el("dtlStatus").value = t.status;
-            el("dtlEstimate").value = t.estimatedCloseDate || "";
-            el("dtlCategory").value = t.category || "";
-            fillResponsibleSelect(t.responsibleUserCode, t.responsibleName);
-        } else {
-            manage.classList.add("d-none");
-        }
+        manage.dataset.id = t.id;
+        el("dtlStatus").value = t.status;
+        el("dtlEstimate").value = t.estimatedCloseDate || "";
+        el("dtlCategory").value = t.category || "";
+        fillResponsibleSelect(t.responsibleUserCode, t.responsibleName);
     }
 
     function fillResponsibleSelect(code, name) {
@@ -320,7 +320,7 @@
             form.reset();
             document.querySelectorAll("[data-area-field]").forEach(e => e.classList.add("d-none"));
             await refreshDashboard();
-            if (cfg.isIt) await loadFilterOptions();
+            await loadFilterOptions();
             await loadTickets();
         } catch (e) { toast(e.message, "danger"); }
     }
@@ -345,10 +345,8 @@
             document.querySelectorAll("[data-area-field]").forEach(e => e.classList.add("d-none")));
 
         el("btnDtlUpload").addEventListener("click", e => uploadAttachment(e.target.dataset.id));
-        if (cfg.isIt) {
-            el("btnDtlSave").addEventListener("click", saveDetail);
-            el("btnDtlInactivate").addEventListener("click", inactivateDetail);
-        }
+        el("btnDtlSave").addEventListener("click", saveDetail);
+        el("btnDtlInactivate").addEventListener("click", inactivateDetail);
         el("dtlCommentForm").addEventListener("submit", async ev => {
             ev.preventDefault();
             const ticketId = el("dtlCommentTicketId").value;
@@ -360,7 +358,7 @@
         });
 
         try {
-            if (cfg.isIt) await loadFilterOptions();
+            await loadFilterOptions();
             await loadAreas();
         } catch (e) { toast(e.message, "danger"); }
         await loadTickets();

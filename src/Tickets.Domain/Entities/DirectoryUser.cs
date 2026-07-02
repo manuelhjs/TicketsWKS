@@ -1,7 +1,7 @@
 namespace Tickets.Domain.Entities;
 
 /// <summary>
-/// Usuario proveniente del directorio EXTERNO de SAP (tabla VL_USUARIOS).
+/// Usuario proveniente del directorio EXTERNO de SAP (vista dbo.VL_Usuarios).
 /// Es de solo lectura para este módulo; no se administra aquí.
 /// </summary>
 public class DirectoryUser
@@ -11,4 +11,5 @@ public class DirectoryUser
     public string? Email { get; set; }
     public string? DepartmentCode { get; set; }
     public string? DepartmentName { get; set; }
+    public string? Position { get; set; }
 }

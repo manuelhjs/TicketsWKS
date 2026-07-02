@@ -22,10 +22,11 @@ public sealed class TicketsController(
     [HttpGet]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        // Datos de cabecera: se prefieren los del directorio SAP (nombre real y
-        // nombre de departamento); si no está disponible, se usan los de configuración.
+        // Datos de cabecera: se prefieren los del directorio SAP (VL_Usuarios: nombre
+        // real, nombre de departamento y puesto); si no, se usan los de configuración.
         var fullName = currentUser.FullName;
         var departmentName = currentUser.DepartmentName ?? currentUser.DepartmentCode;
+        var position = currentUser.Position;
 
         var dirUsers = await userDirectory.GetByCodesAsync([currentUser.UserCode], ct);
         var me = dirUsers.FirstOrDefault();
@@ -33,16 +34,16 @@ public sealed class TicketsController(
         {
             if (!string.IsNullOrWhiteSpace(me.Name)) fullName = me.Name;
             if (!string.IsNullOrWhiteSpace(me.DepartmentName)) departmentName = me.DepartmentName;
+            if (!string.IsNullOrWhiteSpace(me.Position)) position = me.Position;
         }
 
         var model = new TicketsIndexViewModel
         {
             Dashboard = await ticketService.GetDashboardAsync(ct),
-            IsIt = currentUser.IsIt,
             UserCode = currentUser.UserCode,
             FullName = fullName,
             DepartmentName = departmentName ?? "—",
-            Position = currentUser.Position ?? "—"
+            Position = position ?? "—"
         };
         return View(model);
     }

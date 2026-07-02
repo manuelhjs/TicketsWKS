@@ -60,7 +60,7 @@ Cadenas de conexión (fijas a la base de SAP **B1_PROA_MX_V2**):
 > ⚠️ **Seguridad:** las credenciales están en texto plano (por paridad con PROAMASTER). Para un despliegue real, muévelas a **User Secrets** / variables de entorno / Azure Key Vault, y **no** subas los `appsettings*.json` con contraseñas al control de versiones.
 
 - `CurrentUser`: usuario stub (no hay auth en esta versión). Controla visibilidad/permisos.
-- `ConnectionStrings:SapDirectory`: apunta a la misma B1_PROA_MX_V2, de modo que los nombres de solicitante/responsable se resuelven desde `VL_USUARIOS` (`Sap:UsersView`, por defecto `dbo.VL_USUARIOS`). Si se deja vacío, los nombres se muestran con el código.
+- `ConnectionStrings:SapDirectory`: apunta a la misma B1_PROA_MX_V2, de modo que el nombre, departamento y puesto (solicitante/responsable/usuario actual) se resuelven desde la vista `dbo.VL_Usuarios` (columnas `Code`, `Nombre`, `Correo`, `DepCode`, `DepName`, `PuestoTexto`; `Sap:UsersView` = `dbo.VL_Usuarios`). Si se deja vacío, los nombres se muestran con el código.
 - `Attachments:Path`: carpeta de adjuntos (por defecto `<contentRoot>/attachments`).
 
 ### 3. Ejecutar
@@ -81,18 +81,16 @@ dotnet test
 | Tema | Decisión |
 |---|---|
 | Usuarios / Departamentos | **Externos de SAP** (referenciados por código, sin recrearlos). |
-| Autenticación | **Sin auth** por ahora: `ICurrentUserService` con stub configurable. |
+| Autenticación / roles | **Sin auth y sin roles**: `ICurrentUserService` con stub configurable; acceso completo para todos. |
 | Notificaciones por correo | **Omitidas** en esta versión (el legacy enviaba correos desde la entidad). |
 | Organización | Multi-proyecto por capas. |
 
-## Vista principal (roles y UI)
+## Vista principal (UI)
 
-- **Cabecera de usuario:** nombre completo, **nombre** del departamento (no el código) y puesto. Nombre/depto se resuelven del directorio SAP (`VL_USUARIOS`) por código; el puesto y el rol vienen de configuración (`CurrentUser`).
-- **Roles / modos de vista** (`CurrentUser:Role` = `It` | `User`):
-  - **Modo TI:** acceso completo (ver/crear/editar/cambiar estatus de todos los tickets).
-  - **Modo Usuario:** solo ve los tickets que él creó y únicamente en estatus **Creado** o **Cerrado** (no ve los de otros ni el estatus En Proceso). Puede crear tickets y comentar/adjuntar en los propios; el resto es de solo lectura. Las reglas se aplican en el servicio (no solo en la UI): intentar abrir o editar un ticket ajeno devuelve 403.
-- **Creación:** formulario **embebido** en la pantalla (colapsable), ubicado antes de los filtros. Mantiene las validaciones (área CAL exige depto. calidad/monto/cantidad; área PD exige máquina).
-- **Edición:** sin edición inline. Al hacer clic en una fila se abre un **modal de detalle**; los campos editables (estatus, responsable, fecha estimada, tipo, inactivar) se habilitan solo en modo TI. Comentarios y adjuntos dentro del mismo modal.
+- **Sin roles:** todos los usuarios tienen acceso completo (ver/crear/editar/cambiar estatus de todos los tickets).
+- **Cabecera de usuario:** nombre completo, **nombre** del departamento (no el código) y puesto. Se resuelven del directorio SAP (vista `dbo.VL_Usuarios`, que ya expone `DepName` vía `OOCR` y `PuestoTexto`) por código de usuario; la configuración `CurrentUser` es solo respaldo.
+- **Creación:** formulario **embebido** en la pantalla, ubicado antes de los filtros y **visible por defecto** (colapsable). Mantiene las validaciones (área CAL exige depto. calidad/monto/cantidad; área PD exige máquina).
+- **Edición:** sin edición inline. Al hacer **clic en una fila** (o en el botón **Ver** de la última columna) se abre un **modal de detalle** con todos los campos, la sección de gestión (estatus, responsable, fecha estimada, tipo, inactivar), comentarios y adjuntos.
 - **Tabla:** **DataTables** (Bootstrap 5) con paginación, búsqueda y ordenamiento por columna.
   - **Client-side sobre el resultado ya filtrado en servidor**: los filtros (estatus, período, solicitante, clasificación, departamento, responsable) se resuelven en SQL parametrizado; DataTables hace búsqueda/orden/paginación en el navegador sobre ese subconjunto (tope `TicketQuery.MaxRows` = 5000). Conviene por el volumen esperado tras los filtros; si un filtro superara ~5–10k filas de forma habitual, migrar a server-side (`serverSide: true` + endpoint paginado).
 
@@ -103,7 +101,7 @@ dotnet test
 | `@GP_TICKETS` | `dbo.Tickets` |
 | `@GP_ASIGNACIONTP` | `dbo.TicketTypes` (+ `dbo.Areas`) |
 | `@GP_CHAT_TICKETS` | `dbo.TicketComments` |
-| `VL_USUARIOS` (SAP) | Externa (solo lectura vía `IUserDirectoryRepository`) |
+| `VL_Usuarios` / `OOCR` (SAP) | Externas (solo lectura vía `IUserDirectoryRepository`) |
 | `Ticket.cs` (890 líneas: entidad+datos+negocio+correo) | `Domain.Ticket` + `TicketService` + `TicketRepository` |
 | `BD.cs` (ADO.NET) | Dapper + `SqlConnectionFactory` |
 | `TicketsController` con lógica y `try/catch` | Controlador delgado + middleware de errores |

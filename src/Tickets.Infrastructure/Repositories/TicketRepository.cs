@@ -226,19 +226,6 @@ public sealed class TicketRepository(ISqlConnectionFactory connectionFactory) : 
     {
         var sb = new StringBuilder("WHERE t.IsActive = 1");
 
-        // Visibilidad por rol: el rol Usuario solo ve sus tickets y solo ciertos estatus.
-        if (q.RestrictToRequester)
-        {
-            sb.Append(" AND t.RequesterUserCode = @CurrentUserCode");
-            parameters.Add("@CurrentUserCode", q.CurrentUserCode);
-        }
-        if (q.RestrictToStatuses is { Count: > 0 })
-        {
-            // int[] (no byte[]): Dapper trata byte[] como binario y no expande el IN.
-            sb.Append(" AND t.StatusId IN @RestrictStatuses");
-            parameters.Add("@RestrictStatuses", q.RestrictToStatuses.Select(s => (int)s).ToArray());
-        }
-
         if (!includeFilters) return sb.ToString();
 
         if (q.Status is not null)
