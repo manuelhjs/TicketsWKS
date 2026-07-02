@@ -244,8 +244,7 @@
                 { data: "prioridadNombre" },
                 { data: "estatusNombre", render: d => '<span class="badge bg-secondary">' + escapeHtml(d) + '</span>' },
                 { data: "responsableNombre", render: d => escapeHtml(d || "—") },
-                { data: "createdAt", render: fmtDate },
-                { data: null, orderable: false, searchable: false, className: "text-center", render: () => '<button type="button" class="btn btn-sm btn-primary">Ver</button>' }
+                { data: "createdAt", render: fmtDate }
             ]
         });
         $("#ticketsTable tbody").on("click", "tr", function () { const d = state.table.row(this).data(); if (d) openDetail(d.id); });
