@@ -64,16 +64,30 @@
                         <div id="prioridadRadios" class="d-inline"></div>
                     </div>
 
-                    <!-- Clasificación -->
+                    <!-- Clasificación (dropdown personalizado con "Otro…") -->
                     <div class="col-md-6">
                         <label class="form-label">Clasificación <span class="text-danger">*</span></label>
-                        <select id="createClasificacion" name="ClasificacionId" class="form-select" required></select>
+                        <div class="tk-dropdown" id="ddClasificacion">
+                            <input type="hidden" name="ClasificacionId" id="createClasificacionValue" />
+                            <button type="button" class="tk-dropdown-toggle" id="createClasificacionToggle">
+                                <span class="tk-dropdown-label placeholder" id="createClasificacionLabel">Seleccione…</span>
+                                <span class="tk-caret">▾</span>
+                            </button>
+                            <div class="tk-dropdown-menu" id="createClasificacionMenu"></div>
+                        </div>
                     </div>
 
-                    <!-- Categoría -->
+                    <!-- Categoría (dropdown personalizado con "Otro…") -->
                     <div class="col-md-6">
                         <label class="form-label">Categoría <span class="text-danger">*</span></label>
-                        <select id="createCategoria" name="CategoriaId" class="form-select" required></select>
+                        <div class="tk-dropdown" id="ddCategoria">
+                            <input type="hidden" name="CategoriaId" id="createCategoriaValue" />
+                            <button type="button" class="tk-dropdown-toggle" id="createCategoriaToggle">
+                                <span class="tk-dropdown-label placeholder" id="createCategoriaLabel">Seleccione…</span>
+                                <span class="tk-caret">▾</span>
+                            </button>
+                            <div class="tk-dropdown-menu" id="createCategoriaMenu"></div>
+                        </div>
                     </div>
 
                     <!-- Descripción -->
@@ -99,14 +113,25 @@
                 </div>
 
                 <!-- Leyendas fijas -->
-                <div class="alert alert-info small mt-3 mb-2">
-                    <i class="bi bi-clock"></i>
-                    <strong>Horario de atención:</strong> Lunes a Viernes de 8:00 a 18:00 hrs.
-                    Solicitudes fuera de este horario solo se atienden si son Prioridad Alta.
-                    <br />
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Las incidencias serán evaluadas para confirmar si la prioridad seleccionada es la correcta.
-                    Los tiempos son SLA de referencia, no un compromiso contractual.
+                <div class="row g-3 mt-1 mb-3">
+                    <div class="col-md-6">
+                        <div class="alert alert-info small mb-0 d-flex gap-2">
+                            <i class="bi bi-clock-fill fs-6"></i>
+                            <div>
+                                <div class="fw-bold" style="color:#7cc8f2;">Horario de atención</div>
+                                Lunes a Viernes de 8:00 a 18:00 hrs. Solicitudes fuera de este horario solo se atienden si son Prioridad Alta.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="alert alert-warning small mb-0 d-flex gap-2">
+                            <i class="bi bi-exclamation-triangle-fill fs-6"></i>
+                            <div>
+                                <div class="fw-bold" style="color:#fbbf24;">Evaluación de prioridad</div>
+                                Las incidencias serán evaluadas para confirmar si la prioridad seleccionada es la correcta. Los tiempos son SLA de referencia, no un compromiso contractual.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="d-flex gap-2">

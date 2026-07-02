@@ -88,9 +88,61 @@
     }
     async function loadClasificaciones() {
         state.clasificaciones = (await getJson(cfg.urls.getClasificaciones)).data;
-        fillSelect("createClasificacion", state.clasificaciones.concat([{ value: NEW, text: "➕ Otro…" }]), "Seleccione…");
+        // Dropdown personalizado del formulario (con "Otro…")
+        ddSetItems("createClasificacionMenu", state.clasificaciones, onSelectClasif, () => state.modals.clasificacion.show());
+        // Selects nativos (detalle + filtro)
         fillSelect("dtlClasificacion", state.clasificaciones);
         fillSelect("filterClasificacion", state.clasificaciones, "Clasificación");
+    }
+
+    // ---------- Dropdown personalizado ----------
+    function ddSetItems(menuId, items, onSelect, onOtro) {
+        const menu = el(menuId);
+        menu.innerHTML = "";
+        items.forEach(it => {
+            const d = document.createElement("div");
+            d.className = "tk-dd-opt";
+            d.textContent = it.text;
+            d.addEventListener("click", () => onSelect(it.value, it.text));
+            menu.appendChild(d);
+        });
+        if (onOtro) {
+            const o = document.createElement("div");
+            o.className = "tk-dd-opt tk-dd-otro";
+            o.textContent = "＋ Otro…";
+            o.addEventListener("click", onOtro);
+            menu.appendChild(o);
+        }
+    }
+    function ddSelect(prefix, value, text) {
+        el(prefix + "Value").value = value || "";
+        const lbl = el(prefix + "Label");
+        lbl.textContent = text;
+        lbl.classList.toggle("placeholder", !value);
+    }
+    function ddOpen(prefix, open) {
+        el(prefix + "Menu").classList.toggle("show", open);
+        el(prefix + "Toggle").classList.toggle("open", open);
+    }
+    function onSelectClasif(value, text) {
+        ddSelect("createClasificacion", value, text);
+        ddOpen("createClasificacion", false);
+        ddSelect("createCategoria", "", "Seleccione…");
+        loadCategoriasDropdown(value);
+    }
+    function onSelectCat(value, text) { ddSelect("createCategoria", value, text); ddOpen("createCategoria", false); }
+    function onOtroCat() {
+        ddOpen("createCategoria", false);
+        const clasId = el("createClasificacionValue").value;
+        if (!clasId) { toast("Primero selecciona una clasificación.", "danger"); return; }
+        el("catClasificacionId").value = clasId;
+        el("catClasificacionNombre").textContent = el("createClasificacionLabel").textContent;
+        state.modals.categoria.show();
+    }
+    async function loadCategoriasDropdown(clasId) {
+        if (!clasId) { ddSetItems("createCategoriaMenu", [], onSelectCat, onOtroCat); return; }
+        const data = (await getJson(cfg.urls.getCategorias, { clasificacionId: clasId })).data;
+        ddSetItems("createCategoriaMenu", data, onSelectCat, onOtroCat);
     }
     async function loadEmpleados() {
         state.empleados = (await getJson(cfg.urls.getEmpleados)).data;
@@ -113,12 +165,6 @@
     function appendEmpleado(emp) {
         ["createSolicitante", "dtlResponsable", "filterSolicitante"].forEach(id => addOption(el(id), { value: emp.id, text: emp.nombre }));
     }
-    function appendClasificacion(opt) {
-        addOption(el("createClasificacion"), opt, NEW);
-        addOption(el("dtlClasificacion"), opt);
-        addOption(el("filterClasificacion"), opt);
-        state.clasificaciones.push(opt);
-    }
 
     // ---------- Formulario de creación ----------
     function autofillCorreo() {
@@ -126,10 +172,15 @@
         const emp = state.empleados.find(e => String(e.id) === String(id));
         if (emp) el("createCorreo").value = emp.correo || "";
     }
+    function resetCreateDropdowns() {
+        ddSelect("createClasificacion", "", "Seleccione…");
+        ddSelect("createCategoria", "", "Seleccione…");
+        ddSetItems("createCategoriaMenu", [], onSelectCat, onOtroCat);
+    }
     async function submitCreate(ev) {
         ev.preventDefault();
         const form = el("createTicketForm");
-        if (el("createClasificacion").value === NEW || el("createCategoria").value === NEW) { toast("Completa la clasificación/categoría.", "danger"); return; }
+        if (!el("createClasificacionValue").value || !el("createCategoriaValue").value) { toast("Selecciona clasificación y categoría.", "danger"); return; }
         try {
             const r = await postForm(cfg.urls.create, new URLSearchParams(new FormData(form)).toString());
             const files = el("createFiles").files;
@@ -137,7 +188,7 @@
             toast("Ticket creado.", "success");
             form.reset();
             el("descCount").textContent = "0";
-            el("createCategoria").innerHTML = '<option value="">Seleccione…</option>';
+            resetCreateDropdowns();
             el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
             await Promise.all([refreshDashboard(), loadEmpleados()]);
             await loadTickets();
@@ -313,24 +364,24 @@
 
         // Creación
         el("createSolicitante").addEventListener("change", autofillCorreo);
-        el("createClasificacion").addEventListener("change", async e => {
-            if (e.target.value === NEW) { e.target.value = ""; el("createCategoria").innerHTML = '<option value="">Seleccione…</option>'; state.modals.clasificacion.show(); return; }
-            await loadCategorias(e.target.value, "createCategoria", true);
+        // Dropdowns personalizados (Clasificación / Categoría)
+        el("createClasificacionToggle").addEventListener("click", () => {
+            ddOpen("createCategoria", false);
+            ddOpen("createClasificacion", !el("createClasificacionMenu").classList.contains("show"));
         });
-        el("createCategoria").addEventListener("change", e => {
-            if (e.target.value !== NEW) return;
-            e.target.value = "";
-            const clasId = el("createClasificacion").value;
-            if (!clasId || clasId === NEW) { toast("Primero selecciona una clasificación.", "danger"); return; }
-            el("catClasificacionId").value = clasId;
-            el("catClasificacionNombre").textContent = el("createClasificacion").selectedOptions[0]?.textContent || "";
-            state.modals.categoria.show();
+        el("createCategoriaToggle").addEventListener("click", () => {
+            ddOpen("createClasificacion", false);
+            ddOpen("createCategoria", !el("createCategoriaMenu").classList.contains("show"));
+        });
+        document.addEventListener("click", e => {
+            if (!e.target.closest("#ddClasificacion")) ddOpen("createClasificacion", false);
+            if (!e.target.closest("#ddCategoria")) ddOpen("createCategoria", false);
         });
         el("createDescripcion").addEventListener("input", e => el("descCount").textContent = e.target.value.length);
         el("createTicketForm").addEventListener("submit", submitCreate);
         el("createResetBtn").addEventListener("click", () => setTimeout(() => {
             el("descCount").textContent = "0";
-            el("createCategoria").innerHTML = '<option value="">Seleccione…</option>';
+            resetCreateDropdowns();
             el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
         }, 0));
 
@@ -350,9 +401,11 @@
             ev.preventDefault();
             try {
                 const r = await postForm(cfg.urls.addClasificacion, { Nombre: el("clasNombre").value });
-                appendClasificacion(r.data);
-                el("createClasificacion").value = r.data.value;
-                await loadCategorias(r.data.value, "createCategoria", true);
+                state.clasificaciones.push(r.data);
+                addOption(el("dtlClasificacion"), r.data);
+                addOption(el("filterClasificacion"), r.data);
+                ddSetItems("createClasificacionMenu", state.clasificaciones, onSelectClasif, () => state.modals.clasificacion.show());
+                onSelectClasif(r.data.value, r.data.text);
                 state.modals.clasificacion.hide(); el("clasificacionForm").reset();
                 toast("Clasificación agregada.", "success");
             } catch (e) { toast(e.message, "danger"); }
@@ -362,8 +415,8 @@
             try {
                 const clasId = el("catClasificacionId").value;
                 const r = await postForm(cfg.urls.addCategoria, { ClasificacionId: clasId, Nombre: el("catNombre").value });
-                addOption(el("createCategoria"), r.data, NEW);
-                el("createCategoria").value = r.data.value;
+                await loadCategoriasDropdown(clasId);
+                onSelectCat(r.data.value, r.data.text);
                 state.modals.categoria.hide(); el("categoriaForm").reset();
                 toast("Categoría agregada.", "success");
             } catch (e) { toast(e.message, "danger"); }
