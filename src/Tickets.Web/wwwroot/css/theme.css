@@ -103,6 +103,8 @@ hr { border-color: var(--tk-border); opacity: 1; }
     color: var(--tk-text);
 }
 .form-control::placeholder { color: var(--tk-faint); }
+/* Select nativo: muestra el placeholder (opción vacía) en color tenue */
+.form-select:has(option[value=""]:checked) { color: var(--tk-muted); }
 .form-label { color: var(--tk-text2); font-weight: 600; font-size: .82rem; }
 .form-text { color: var(--tk-faint); }
 .form-check-input { background-color: #fff; border-color: var(--tk-border2); }
@@ -137,8 +139,8 @@ hr { border-color: var(--tk-border); opacity: 1; }
 .tk-dropdown-toggle.open, .tk-dropdown-toggle:focus {
     border-color: var(--tk-accent); box-shadow: 0 0 0 3px var(--tk-ring); outline: none; background: #fff;
 }
-.tk-dropdown-label.placeholder { color: var(--tk-faint); }
-.tk-caret { color: var(--tk-faint); }
+.tk-dropdown-label.placeholder { color: var(--tk-muted); }
+.tk-caret { color: var(--tk-muted); }
 .tk-dropdown-menu {
     display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
     background: var(--tk-card); border: 1px solid var(--tk-border2); border-radius: 10px;
