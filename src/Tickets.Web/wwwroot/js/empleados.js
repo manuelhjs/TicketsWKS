@@ -43,10 +43,15 @@
             data: [], language: DT_LANG, order: [[1, "asc"]], pageLength: 25,
             scrollX: true, fixedColumns: { start: 1 },
             columnDefs: [
-                { targets: 1, width: "180px" },  // Nombre
-                { targets: 2, width: "210px" },  // Correo
-                { targets: 4, width: "160px" },  // Puesto
-                { targets: 5, width: "150px" }   // Área
+                { targets: 0, width: "120px" },  // Código
+                { targets: 1, width: "210px" },  // Nombre
+                { targets: 2, width: "240px" },  // Correo
+                { targets: 3, width: "130px" },  // Teléfono
+                { targets: 4, width: "180px" },  // Puesto
+                { targets: 5, width: "160px" },  // Área
+                { targets: 6, width: "120px" },  // Ingreso
+                { targets: 7, width: "110px" },  // Estado
+                { targets: 8, width: "190px" }   // Acciones
             ],
             columns: [
                 { data: "codigo", render: d => esc(d || "—") },

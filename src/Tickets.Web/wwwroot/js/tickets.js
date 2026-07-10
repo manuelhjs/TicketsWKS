@@ -237,10 +237,15 @@
             data: [], language: DT_LANG, order: [[0, "desc"]], pageLength: 25,
             scrollX: true, fixedColumns: { start: 1 },
             columnDefs: [
-                { targets: 1, width: "170px" },  // Solicitante
-                { targets: 3, width: "150px" },  // Clasificación
-                { targets: 4, width: "150px" },  // Categoría
-                { targets: 7, width: "170px" }   // Responsable
+                { targets: 0, width: "70px" },   // Id
+                { targets: 1, width: "200px" },  // Solicitante
+                { targets: 2, width: "130px" },  // Tipo
+                { targets: 3, width: "170px" },  // Clasificación
+                { targets: 4, width: "170px" },  // Categoría
+                { targets: 5, width: "120px" },  // Prioridad
+                { targets: 6, width: "150px" },  // Estatus
+                { targets: 7, width: "200px" },  // Responsable
+                { targets: 8, width: "130px" }   // Creación
             ],
             columns: [
                 { data: "id", render: d => '<span class="fw-semibold text-primary">#' + d + '</span>' },

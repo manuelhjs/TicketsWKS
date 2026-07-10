@@ -179,12 +179,12 @@ hr { border-color: var(--tk-border); opacity: 1; }
     color: var(--tk-muted);
     border-bottom: 1px solid var(--tk-border);
     font-weight: 600; white-space: nowrap;
-    padding: .65rem .9rem;
+    padding: .8rem 1.25rem;
 }
 #ticketsTable tbody td, #empleadosTable tbody td {
     border-color: var(--tk-border);
-    font-size: .85rem; vertical-align: middle;
-    padding: .55rem .9rem; white-space: nowrap;
+    font-size: .875rem; vertical-align: middle;
+    padding: .75rem 1.25rem; white-space: nowrap;
 }
 #ticketsTable tbody tr { cursor: pointer; }
 table.dataTable.table-striped > tbody > tr:nth-of-type(odd) > * { --bs-table-bg-type: rgba(15, 23, 42, 0.02); }
