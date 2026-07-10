@@ -92,6 +92,19 @@
 
         el("btnNuevoEmpleado").addEventListener("click", () => openModal(null));
         el("btnImportar").addEventListener("click", () => { el("importResult").innerHTML = ""; el("importFile").value = ""; state.importModal.show(); });
+        el("btnPlantilla").addEventListener("click", ev => {
+            ev.preventDefault();
+            const contenido =
+                "Codigo,Nombre,Correo,Telefono,Puesto,Area,FechaIngreso,Activo\n" +
+                "# Fila de ejemplo (las líneas que inician con # se ignoran al importar):\n" +
+                "# ,Juan Pérez,jperez@empresa.com,5512345678,Analista,Sistemas,2024-01-15,Sí\n";
+            const blob = new Blob(["﻿" + contenido], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url; a.download = "plantilla_empleados.csv";
+            document.body.appendChild(a); a.click(); a.remove();
+            URL.revokeObjectURL(url);
+        });
 
         $("#empleadosTable tbody").on("click", ".js-edit", function () {
             const id = Number(this.dataset.id);

@@ -104,6 +104,8 @@ public sealed partial class EmpleadoAdminService(IEmpleadoRepository empleados) 
         for (var i = 1; i < lines.Count; i++)
         {
             var fila = i + 1;
+            // Líneas de comentario (plantilla): se ignoran.
+            if (lines[i].TrimStart().StartsWith('#')) continue;
             try
             {
                 var f = ParseCsvLine(lines[i]);
