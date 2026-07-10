@@ -58,15 +58,13 @@
             <div class="modal-header"><h5 class="modal-title">Importar empleados (CSV)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
             <div class="modal-body">
-                <p class="small text-muted mb-2">
-                    Archivo CSV con encabezado y columnas en este orden:
-                    <br /><code>Codigo, Nombre, Correo, Telefono, Puesto, Area, FechaIngreso, Activo</code>
-                    <br />Se actualizan los existentes (por Código o Nombre+Correo) y se insertan los nuevos. La fecha en formato <code>aaaa-mm-dd</code>.
-                    <br />Las líneas que inician con <code>#</code> se ignoran (comentarios).
-                </p>
                 <div class="mb-2">
-                    <a href="#" id="btnPlantilla" class="small"><i class="bi bi-file-earmark-arrow-down"></i> Descargar plantilla CSV</a>
+                    <a href="#" id="btnPlantilla"><i class="bi bi-file-earmark-arrow-down"></i> Descargar plantilla CSV</a>
                 </div>
+                <p class="small text-muted mb-2">
+                    Usa la plantilla, agrega tus filas y súbela. Se actualizan los existentes
+                    (por Código o Nombre+Correo) y se insertan los nuevos.
+                </p>
                 <input type="file" id="importFile" class="form-control" accept=".csv,text/csv" />
                 <div id="importResult" class="mt-3 small"></div>
             </div>
