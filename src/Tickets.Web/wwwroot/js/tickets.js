@@ -150,7 +150,7 @@
         fillSelect("createSolicitante", opts, "Seleccione…");
         fillSelect("dtlResponsable", opts, "— Sin responsable —");
         fillSelect("filterSolicitante", opts, "Solicitante");
-        if (cfg.currentEmpleadoId) { el("createSolicitante").value = cfg.currentEmpleadoId; autofillCorreo(); }
+        selectCurrentSolicitante();
     }
     async function loadCategorias(clasId, targetId, includeOtro) {
         const sel = el(targetId);
@@ -172,6 +172,12 @@
         const emp = state.empleados.find(e => String(e.id) === String(id));
         if (emp) el("createCorreo").value = emp.correo || "";
     }
+    function selectCurrentSolicitante() {
+        const sel = el("createSolicitante");
+        sel.value = (cfg.currentEmpleadoId && state.empleados.some(e => String(e.id) === String(cfg.currentEmpleadoId)))
+            ? cfg.currentEmpleadoId : "";
+        autofillCorreo();
+    }
     function resetCreateDropdowns() {
         ddSelect("createClasificacion", "", "Seleccione…");
         ddSelect("createCategoria", "", "Seleccione…");
@@ -189,7 +195,7 @@
             form.reset();
             el("descCount").textContent = "0";
             resetCreateDropdowns();
-            el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
+            selectCurrentSolicitante();
             await Promise.all([refreshDashboard(), loadEmpleados()]);
             await loadTickets();
         } catch (e) { toast(e.message, "danger"); }
@@ -393,7 +399,7 @@
         el("createResetBtn").addEventListener("click", () => setTimeout(() => {
             el("descCount").textContent = "0";
             resetCreateDropdowns();
-            el("createSolicitante").value = cfg.currentEmpleadoId || ""; autofillCorreo();
+            selectCurrentSolicitante();
         }, 0));
 
         // Modales de catálogo
