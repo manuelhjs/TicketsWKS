@@ -1,0 +1,121 @@
+@* Modales de alta/edición de catálogos (Id oculto: 0 = nuevo). *@
+
+<!-- Clasificación -->
+<div class="modal fade" id="clasifModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content"><form id="clasifForm">
+            <input type="hidden" id="clasifId" />
+            <div class="modal-header"><h5 class="modal-title" id="clasifTitle">Clasificación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="clasifNombre" class="form-control" required />
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="clasifActivo" checked />
+                    <label class="form-check-label" for="clasifActivo">Activo</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form></div>
+    </div>
+</div>
+
+<!-- Categoría -->
+<div class="modal fade" id="catModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content"><form id="catForm">
+            <input type="hidden" id="catId" />
+            <div class="modal-header"><h5 class="modal-title" id="catTitle">Categoría</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Clasificación <span class="text-danger">*</span></label>
+                    <select id="catClasif" class="form-select" required></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="catNombre" class="form-control" required />
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="catActivo" checked />
+                    <label class="form-check-label" for="catActivo">Activo</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form></div>
+    </div>
+</div>
+
+<!-- Prioridad -->
+<div class="modal fade" id="priModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content"><form id="priForm">
+            <input type="hidden" id="priId" />
+            <div class="modal-header"><h5 class="modal-title" id="priTitle">Prioridad</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="priNombre" class="form-control" required />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Descripción (SLA)</label>
+                    <textarea id="priDescripcion" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Orden</label>
+                    <input type="number" id="priOrden" class="form-control" min="0" value="0" />
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="priActivo" checked />
+                    <label class="form-check-label" for="priActivo">Activo</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form></div>
+    </div>
+</div>
+
+<!-- Estatus -->
+<div class="modal fade" id="estModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content"><form id="estForm">
+            <input type="hidden" id="estId" />
+            <div class="modal-header"><h5 class="modal-title" id="estTitle">Estatus</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="estNombre" class="form-control" required />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Orden</label>
+                    <input type="number" id="estOrden" class="form-control" min="0" value="0" />
+                </div>
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="estEsFinal" />
+                    <label class="form-check-label" for="estEsFinal">Cierra el ticket (estado final)</label>
+                </div>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="estActivo" checked />
+                    <label class="form-check-label" for="estActivo">Activo</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form></div>
+    </div>
+</div>

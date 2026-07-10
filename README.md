@@ -105,6 +105,15 @@ Tablas del módulo (en `B1_PROA_MX_V2`): `Empleados`, `Clasificacion`, `Categori
 - **Detalle/edición:** clic en fila o botón **Ver** abre un modal con pestañas: **Detalle** (edita campos + cambia estatus con comentario obligatorio + asigna responsable + adjuntos + inactivar), **Comentarios**, **Historial de estatus**, **Bitácora** (TicketLog).
 - **Tabla:** **DataTables** (Bootstrap 5) — paginación/búsqueda/orden client-side sobre el resultado ya filtrado en SQL (tope 5000 filas; migrar a server-side si crece).
 
+## Módulos de administración (menú principal)
+
+Además de **Tickets**, la barra superior incluye dos módulos independientes con el mismo diseño y patrones:
+
+- **Opciones de Tickets** (`/Options`): administra los catálogos que alimentan el alta de tickets, en 4 pestañas — **Clasificaciones, Categorías, Prioridades, Estatus**. Permite listar, agregar, editar y **activar/desactivar** (borrado **lógico**: desactivar oculta la opción del alta sin afectar tickets existentes). Categoría depende de Clasificación. Prioridad y Estatus admiten `Orden`; Estatus además marca "cierra el ticket".
+- **Empleados** (`/Empleados`): **reutiliza la misma tabla `Empleados`** que el "Solicitante" de tickets (no duplica la entidad). Se le agregaron `Puesto`, `Area`, `FechaIngreso`. Ofrece tabla con buscador/paginación (DataTables), alta/edición, activar/desactivar, **exportar CSV** y **importar CSV** (upsert por `Codigo` o `Nombre+Correo`; filas inválidas se omiten y se reporta el detalle). CSV UTF-8 con encabezado: `Codigo, Nombre, Correo, Telefono, Puesto, Area, FechaIngreso, Activo`.
+
+> **Migración de BD:** ejecuta `db/03_ModulosOpcionesEmpleados.sql` sobre una BD existente (agrega `Activo` a Prioridad/Estatus y `Puesto/Area/FechaIngreso` a Empleados). Es idempotente. Si recreas todo con `TicketsDb_Full.sql`, ya incluye estas columnas.
+
 ## Correspondencia legacy → nuevo
 
 | Legacy (PROAMASTER) | Nuevo |

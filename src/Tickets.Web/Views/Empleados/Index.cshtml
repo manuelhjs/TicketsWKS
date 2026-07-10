@@ -1,0 +1,65 @@
+@{
+    ViewData["Title"] = "Empleados";
+}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" />
+<link rel="stylesheet" href="~/css/tickets.css" asp-append-version="true" />
+
+<div class="tickets-page">
+
+    <div class="card mb-3">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="user-avatar"><i class="bi bi-people"></i></div>
+                <div>
+                    <div class="user-name">Empleados</div>
+                    <div class="user-meta">Directorio de solicitantes usado por el módulo de Tickets.</div>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary" id="btnNuevoEmpleado"><i class="bi bi-person-plus"></i> Nuevo empleado</button>
+                <a class="btn btn-outline-secondary" href="@Url.Action("Export")"><i class="bi bi-download"></i> Exportar</a>
+                <button class="btn btn-outline-secondary" id="btnImportar"><i class="bi bi-upload"></i> Importar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-sm table-hover table-striped w-100" id="empleadosTable">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Correo</th>
+                        <th>Teléfono</th>
+                        <th>Puesto</th>
+                        <th>Área</th>
+                        <th>Ingreso</th>
+                        <th>Estado</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@await Html.PartialAsync("_EmpleadoModal")
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        window.empleadosConfig = {
+            urls: {
+                getEmpleados: '@Url.Action("GetEmpleados")',
+                upsert: '@Url.Action("Upsert")',
+                toggle: '@Url.Action("Toggle")',
+                import: '@Url.Action("Import")'
+            }
+        };
+    </script>
+    <script src="~/js/empleados.js" asp-append-version="true"></script>
+}

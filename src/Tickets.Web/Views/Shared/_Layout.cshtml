@@ -21,10 +21,20 @@
                     <span class="brand-icon">🎫</span>
                     <span class="fw-bold">Mesa de Tickets</span>
                 </a>
+                @{
+                    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+                    string NavActive(string c) => string.Equals(currentController, c, StringComparison.OrdinalIgnoreCase) ? "app-nav-active" : "";
+                }
                 <div class="navbar-collapse collapse d-sm-inline-flex">
-                    <ul class="navbar-nav">
+                    <ul class="navbar-nav gap-2">
                         <li class="nav-item">
-                            <a class="nav-link app-nav-active" asp-controller="Tickets" asp-action="Index">Tickets</a>
+                            <a class="nav-link @NavActive("Tickets")" asp-controller="Tickets" asp-action="Index">Tickets</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @NavActive("Options")" asp-controller="Options" asp-action="Index">Opciones</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @NavActive("Empleados")" asp-controller="Empleados" asp-action="Index">Empleados</a>
                         </li>
                     </ul>
                 </div>

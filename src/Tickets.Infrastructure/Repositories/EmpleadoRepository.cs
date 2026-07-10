@@ -7,11 +7,18 @@ namespace Tickets.Infrastructure.Repositories;
 
 public sealed class EmpleadoRepository(ISqlConnectionFactory connectionFactory) : IEmpleadoRepository
 {
-    private const string Columns = "Id, Codigo, Nombre, Correo, Telefono, Activo, FechaAlta";
+    private const string Columns = "Id, Codigo, Nombre, Correo, Telefono, Puesto, Area, FechaIngreso, Activo, FechaAlta";
 
     public async Task<IReadOnlyList<Empleado>> GetActiveAsync(CancellationToken ct = default)
     {
         var sql = $"SELECT {Columns} FROM dbo.Empleados WHERE Activo = 1 ORDER BY Nombre;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return (await conn.QueryAsync<Empleado>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
+    }
+
+    public async Task<IReadOnlyList<Empleado>> GetAllAsync(CancellationToken ct = default)
+    {
+        var sql = $"SELECT {Columns} FROM dbo.Empleados ORDER BY Nombre;";
         await using var conn = connectionFactory.CreateTicketsConnection();
         return (await conn.QueryAsync<Empleado>(new CommandDefinition(sql, cancellationToken: ct))).ToList();
     }
@@ -33,11 +40,30 @@ public sealed class EmpleadoRepository(ISqlConnectionFactory connectionFactory) 
     public async Task<int> InsertAsync(Empleado e, CancellationToken ct = default)
     {
         const string sql = """
-            INSERT INTO dbo.Empleados (Codigo, Nombre, Correo, Telefono, Activo, FechaAlta)
-            VALUES (@Codigo, @Nombre, @Correo, @Telefono, @Activo, @FechaAlta);
+            INSERT INTO dbo.Empleados (Codigo, Nombre, Correo, Telefono, Puesto, Area, FechaIngreso, Activo, FechaAlta)
+            VALUES (@Codigo, @Nombre, @Correo, @Telefono, @Puesto, @Area, @FechaIngreso, @Activo, @FechaAlta);
             SELECT CAST(SCOPE_IDENTITY() AS INT);
             """;
         await using var conn = connectionFactory.CreateTicketsConnection();
         return await conn.QuerySingleAsync<int>(new CommandDefinition(sql, e, cancellationToken: ct));
+    }
+
+    public async Task<bool> UpdateAsync(Empleado e, CancellationToken ct = default)
+    {
+        const string sql = """
+            UPDATE dbo.Empleados
+            SET Codigo = @Codigo, Nombre = @Nombre, Correo = @Correo, Telefono = @Telefono,
+                Puesto = @Puesto, Area = @Area, FechaIngreso = @FechaIngreso, Activo = @Activo
+            WHERE Id = @Id;
+            """;
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.ExecuteAsync(new CommandDefinition(sql, e, cancellationToken: ct)) > 0;
+    }
+
+    public async Task<bool> SetActivoAsync(int id, bool activo, CancellationToken ct = default)
+    {
+        const string sql = "UPDATE dbo.Empleados SET Activo = @Activo WHERE Id = @Id;";
+        await using var conn = connectionFactory.CreateTicketsConnection();
+        return await conn.ExecuteAsync(new CommandDefinition(sql, new { Id = id, Activo = activo }, cancellationToken: ct)) > 0;
     }
 }

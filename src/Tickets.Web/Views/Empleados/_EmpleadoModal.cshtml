@@ -1,0 +1,75 @@
+@* Modal de alta/edición de empleado + modal de importación CSV. *@
+
+<div class="modal fade" id="empleadoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content"><form id="empleadoForm">
+            <input type="hidden" id="empId" />
+            <div class="modal-header"><h5 class="modal-title" id="empTitle">Empleado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                        <input type="text" id="empNombre" class="form-control" required />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Código (opcional)</label>
+                        <input type="text" id="empCodigo" class="form-control" placeholder="Usuario SAP" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Correo</label>
+                        <input type="email" id="empCorreo" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Teléfono</label>
+                        <input type="tel" id="empTelefono" class="form-control" maxlength="10" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Puesto</label>
+                        <input type="text" id="empPuesto" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Área</label>
+                        <input type="text" id="empArea" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fecha de ingreso</label>
+                        <input type="date" id="empFechaIngreso" class="form-control" />
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="empActivo" checked />
+                            <label class="form-check-label" for="empActivo">Activo</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+        </form></div>
+    </div>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Importar empleados (CSV)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p class="small text-muted mb-2">
+                    Archivo CSV con encabezado y columnas en este orden:
+                    <br /><code>Codigo, Nombre, Correo, Telefono, Puesto, Area, FechaIngreso, Activo</code>
+                    <br />Se actualizan los existentes (por Código o Nombre+Correo) y se insertan los nuevos. La fecha en formato <code>aaaa-mm-dd</code>.
+                </p>
+                <input type="file" id="importFile" class="form-control" accept=".csv,text/csv" />
+                <div id="importResult" class="mt-3 small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-primary" id="btnDoImport">Importar</button>
+            </div>
+        </div>
+    </div>
+</div>

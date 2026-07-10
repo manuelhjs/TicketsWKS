@@ -37,13 +37,16 @@ GO
 /* ---------- 2. Empleados (NUEVA) — fuente de Solicitante/Responsable ---------- */
 CREATE TABLE dbo.Empleados
 (
-    Id        INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Empleados PRIMARY KEY,
-    Codigo    NVARCHAR(50)  NULL,           -- enlace opcional a usuario SAP (para preselección)
-    Nombre    NVARCHAR(200) NOT NULL,
-    Correo    NVARCHAR(256) NULL,           -- opcional
-    Telefono  NVARCHAR(20)  NULL,           -- opcional
-    Activo    BIT           NOT NULL CONSTRAINT DF_Empleados_Activo DEFAULT (1),
-    FechaAlta DATETIME2(0)  NOT NULL CONSTRAINT DF_Empleados_FechaAlta DEFAULT (SYSUTCDATETIME())
+    Id           INT           NOT NULL IDENTITY(1,1) CONSTRAINT PK_Empleados PRIMARY KEY,
+    Codigo       NVARCHAR(50)  NULL,        -- enlace opcional a usuario SAP (para preselección)
+    Nombre       NVARCHAR(200) NOT NULL,
+    Correo       NVARCHAR(256) NULL,        -- opcional
+    Telefono     NVARCHAR(20)  NULL,        -- opcional
+    Puesto       NVARCHAR(150) NULL,
+    Area         NVARCHAR(100) NULL,
+    FechaIngreso DATE          NULL,
+    Activo       BIT           NOT NULL CONSTRAINT DF_Empleados_Activo DEFAULT (1),
+    FechaAlta    DATETIME2(0)  NOT NULL CONSTRAINT DF_Empleados_FechaAlta DEFAULT (SYSUTCDATETIME())
 );
 CREATE INDEX IX_Empleados_Codigo ON dbo.Empleados (Codigo);
 CREATE INDEX IX_Empleados_Nombre ON dbo.Empleados (Nombre);
@@ -80,7 +83,8 @@ CREATE TABLE dbo.Prioridad
     Id          TINYINT       NOT NULL CONSTRAINT PK_Prioridad PRIMARY KEY,
     Nombre      NVARCHAR(30)  NOT NULL,
     Descripcion NVARCHAR(300) NOT NULL,   -- descripción + SLA de referencia
-    Orden       TINYINT       NOT NULL
+    Orden       TINYINT       NOT NULL,
+    Activo      BIT           NOT NULL CONSTRAINT DF_Prioridad_Activo DEFAULT (1)
 );
 GO
 
@@ -91,6 +95,7 @@ CREATE TABLE dbo.Estatus
     Nombre  NVARCHAR(50) NOT NULL,
     Orden   TINYINT      NOT NULL,
     EsFinal BIT          NOT NULL CONSTRAINT DF_Estatus_EsFinal DEFAULT (0),
+    Activo  BIT          NOT NULL CONSTRAINT DF_Estatus_Activo DEFAULT (1),
     CONSTRAINT UQ_Estatus_Nombre UNIQUE (Nombre)
 );
 GO

@@ -7,4 +7,5 @@ public class Estatus
     public string Nombre { get; set; } = string.Empty;
     public byte Orden { get; set; }
     public bool EsFinal { get; set; }
+    public bool Activo { get; set; } = true;
 }
