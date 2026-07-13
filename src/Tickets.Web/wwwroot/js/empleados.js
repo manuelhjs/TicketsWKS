@@ -24,12 +24,12 @@
         c.appendChild(e); setTimeout(() => e.remove(), 4000);
     }
     function fmtDate(v) { if (!v) return "—"; const [y, m, d] = String(v).substring(0, 10).split("-"); return d + "/" + m + "/" + y; }
-    function estadoBadge(a) { return a ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>'; }
+    function estadoBadge(a) { return '<span class="badge-estado ' + (a ? "activo" : "inactivo") + '">' + (a ? "Activo" : "Inactivo") + '</span>'; }
     function acciones(e) {
         const t = e.activo
-            ? '<button class="btn btn-sm btn-outline-danger js-toggle" data-id="' + e.id + '" data-activo="false">Desactivar</button>'
-            : '<button class="btn btn-sm btn-outline-primary js-toggle" data-id="' + e.id + '" data-activo="true">Activar</button>';
-        return '<div class="d-flex gap-2 justify-content-end"><button class="btn btn-sm btn-outline-secondary js-edit" data-id="' + e.id + '">Editar</button>' + t + '</div>';
+            ? '<button class="btn-icon danger js-toggle" title="Desactivar" data-id="' + e.id + '" data-activo="false"><i class="bi bi-slash-circle"></i></button>'
+            : '<button class="btn-icon primary js-toggle" title="Activar" data-id="' + e.id + '" data-activo="true"><i class="bi bi-check-lg"></i></button>';
+        return '<div class="d-flex gap-2 justify-content-end"><button class="btn-icon js-edit" title="Editar" data-id="' + e.id + '"><i class="bi bi-pencil"></i></button>' + t + '</div>';
     }
 
     const DT_LANG = {

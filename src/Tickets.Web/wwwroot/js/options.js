@@ -24,14 +24,14 @@
         c.appendChild(e); setTimeout(() => e.remove(), 4000);
     }
     function estadoBadge(activo) {
-        return activo ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-secondary">Inactivo</span>';
+        return '<span class="badge-estado ' + (activo ? "activo" : "inactivo") + '">' + (activo ? "Activo" : "Inactivo") + '</span>';
     }
     function acciones(kind, id, activo) {
         const toggle = activo
-            ? '<button class="btn btn-sm btn-outline-danger js-toggle" data-kind="' + kind + '" data-id="' + id + '" data-activo="false">Desactivar</button>'
-            : '<button class="btn btn-sm btn-outline-primary js-toggle" data-kind="' + kind + '" data-id="' + id + '" data-activo="true">Activar</button>';
+            ? '<button class="btn-icon danger js-toggle" title="Desactivar" data-kind="' + kind + '" data-id="' + id + '" data-activo="false"><i class="bi bi-slash-circle"></i></button>'
+            : '<button class="btn-icon primary js-toggle" title="Activar" data-kind="' + kind + '" data-id="' + id + '" data-activo="true"><i class="bi bi-check-lg"></i></button>';
         return '<div class="d-flex gap-2 justify-content-end">' +
-            '<button class="btn btn-sm btn-outline-secondary js-edit" data-kind="' + kind + '" data-id="' + id + '">Editar</button>' +
+            '<button class="btn-icon js-edit" title="Editar" data-kind="' + kind + '" data-id="' + id + '"><i class="bi bi-pencil"></i></button>' +
             toggle + '</div>';
     }
 

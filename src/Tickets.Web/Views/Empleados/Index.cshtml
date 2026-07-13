@@ -9,18 +9,18 @@
 <div class="tickets-page">
 
     <div class="card mb-3">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="user-avatar"><i class="bi bi-people"></i></div>
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3 py-3">
+            <div class="d-flex align-items-start gap-3">
+                <span style="font-size:18px;">👥</span>
                 <div>
-                    <div class="user-name">Empleados</div>
+                    <div class="fw-bold" style="font-size:16px;">Empleados</div>
                     <div class="user-meta">Directorio de solicitantes usado por el módulo de Tickets.</div>
                 </div>
             </div>
             <div class="d-flex gap-2">
-                <button class="btn btn-primary" id="btnNuevoEmpleado"><i class="bi bi-person-plus"></i> Nuevo empleado</button>
-                <a class="btn btn-outline-secondary" href="@Url.Action("Export")"><i class="bi bi-download"></i> Exportar</a>
-                <button class="btn btn-outline-secondary" id="btnImportar"><i class="bi bi-upload"></i> Importar</button>
+                <button class="btn btn-sm btn-primary" id="btnNuevoEmpleado"><i class="bi bi-person-plus"></i> Nuevo empleado</button>
+                <a class="btn btn-sm btn-outline-secondary" href="@Url.Action("Export")"><i class="bi bi-download"></i> Exportar</a>
+                <button class="btn btn-sm btn-outline-secondary" id="btnImportar"><i class="bi bi-upload"></i> Importar</button>
             </div>
         </div>
     </div>
