@@ -41,7 +41,7 @@
     function initTable() {
         state.table = $("#empleadosTable").DataTable({
             data: [], language: DT_LANG, order: [[1, "asc"]], pageLength: 25,
-            scrollX: true, fixedColumns: { start: 1 },
+            scrollX: true, scrollY: "55vh", scrollCollapse: true, fixedColumns: { start: 1 },
             columnDefs: [
                 { targets: 0, width: "120px" },  // Código
                 { targets: 1, width: "210px" },  // Nombre

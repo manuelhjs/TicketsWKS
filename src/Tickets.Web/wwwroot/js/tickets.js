@@ -241,7 +241,7 @@
     function initTable() {
         state.table = $("#ticketsTable").DataTable({
             data: [], language: DT_LANG, order: [[0, "desc"]], pageLength: 25,
-            scrollX: true, fixedColumns: { start: 1 },
+            scrollX: true, scrollY: "55vh", scrollCollapse: true, fixedColumns: { start: 1 },
             columnDefs: [
                 { targets: 0, width: "70px" },   // Id
                 { targets: 1, width: "200px" },  // Solicitante
