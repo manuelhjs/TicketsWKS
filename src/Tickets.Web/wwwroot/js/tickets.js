@@ -241,38 +241,32 @@
     function initTable() {
         state.table = $("#ticketsTable").DataTable({
             data: [], language: DT_LANG, order: [[0, "desc"]], pageLength: 25,
-            scrollX: true, scrollY: "55vh", scrollCollapse: true, fixedColumns: { start: 1 },
-            columnDefs: [
-                { targets: 0, width: "70px" },   // Id
-                { targets: 1, width: "200px" },  // Solicitante
-                { targets: 2, width: "130px" },  // Tipo
-                { targets: 3, width: "170px" },  // Clasificación
-                { targets: 4, width: "170px" },  // Categoría
-                { targets: 5, width: "120px" },  // Prioridad
-                { targets: 6, width: "150px" },  // Estatus
-                { targets: 7, width: "200px" },  // Responsable
-                { targets: 8, width: "130px" }   // Creación
-            ],
+            pagingType: "simple",   // Solo Anterior / Siguiente (como el diseño)
+            // Estructura del diseño: controles arriba (Mostrar / Exportar+Buscar), tabla con scroll horizontal, pie (registros / paginación)
+            dom: "<'dt-top'lf>" + "<'dt-table'tr>" + "<'dt-bottom'ip>",
             columns: [
-                { data: "id", render: d => '<span class="fw-semibold text-primary">#' + d + '</span>' },
+                { data: "id", render: d => '<span class="tk-id">#' + d + '</span>' },
                 { data: "solicitanteNombre" },
                 { data: "tipoSolicitudNombre" },
                 { data: "clasificacionNombre" },
                 { data: "categoriaNombre" },
                 { data: "prioridadNombre" },
-                { data: "estatusNombre", render: d => '<span class="badge bg-secondary">' + escapeHtml(d) + '</span>' },
+                { data: "estatusNombre", render: d => '<span class="badge-estatus">' + escapeHtml(d) + '</span>' },
                 { data: "responsableNombre", render: d => escapeHtml(d || "—") },
                 { data: "createdAt", render: fmtDate }
             ],
-            // Coloca "Exportar" a la izquierda del buscador (como en el diseño)
+            // Cabecera: "Mostrar" a la izquierda; "Exportar" + "Buscar" agrupados a la derecha (como el diseño)
             initComplete: function () {
                 const container = this.api().table().container();
+                const top = container.querySelector(".dt-top");
                 const filter = container.querySelector(".dataTables_filter");
                 const btn = el("btnExportTickets");
-                if (filter && btn) {
-                    const col = filter.parentElement;
-                    col.classList.add("d-flex", "justify-content-end", "align-items-center", "gap-3");
-                    col.insertBefore(btn, filter);
+                if (top && filter && btn) {
+                    const right = document.createElement("div");
+                    right.className = "d-flex align-items-center gap-3";
+                    right.appendChild(btn);
+                    right.appendChild(filter);
+                    top.appendChild(right);
                     btn.classList.remove("d-none");
                 }
             }

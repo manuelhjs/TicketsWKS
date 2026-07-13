@@ -45,6 +45,41 @@
 }
 .btn-clear:hover { background: #0369a1; border-color: #0369a1; }
 
+/* ---------- Tabla de tickets (réplica del diseño "Mejora de diseño moderno") ---------- */
+/* Cabecera de controles: Mostrar (izq) · Exportar + Buscar (der) */
+.dt-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.dt-top .dataTables_length { margin: 0; }
+.dt-top .dataTables_filter { margin: 0; }
+/* Contenedor de la tabla: borde redondeado + scroll horizontal */
+.dt-table { border: 1px solid var(--tk-border); border-radius: 12px; overflow-x: auto; }
+/* Pie: registros (izq) · paginación (der) */
+.dt-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+
+/* Tabla en sí */
+#ticketsTable.dataTable { border-collapse: collapse; font-size: 13px; margin: 0 !important; min-width: 980px; width: 100%; }
+#ticketsTable thead tr { background: #f8fafc; }
+#ticketsTable thead th {
+    text-align: left; padding: 11px 14px; color: var(--tk-muted);
+    font-weight: 600; border-bottom: 1px solid var(--tk-border); white-space: nowrap; background: #f8fafc;
+}
+#ticketsTable tbody td {
+    padding: 11px 14px; color: var(--tk-text2);
+    border-bottom: 1px solid var(--tk-border); white-space: nowrap; vertical-align: middle;
+}
+#ticketsTable tbody tr:last-child td { border-bottom: none; }
+#ticketsTable tbody tr:hover > * { background: var(--tk-accent-soft); }
+#ticketsTable .tk-id { color: var(--tk-text); font-weight: 600; }
+
+/* Info "N registros" y paginación (Anterior / Siguiente) del diseño */
+#ticketsTable_wrapper .dataTables_info { font-size: 13px; color: var(--tk-muted); padding: 0; }
+#ticketsTable_wrapper .pagination { margin: 0; gap: 8px; }
+#ticketsTable_wrapper .page-link {
+    background: #eef2f7; border: 1px solid var(--tk-border2); color: var(--tk-text2);
+    font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px;
+}
+#ticketsTable_wrapper .page-link:hover { background: #e2e8f0; }
+#ticketsTable_wrapper .page-item.disabled .page-link { color: var(--tk-faint); background: #eef2f7; cursor: not-allowed; }
+
 /* Botón "Exportar" (cabecera de la tabla) — según el diseño */
 .btn-export {
     background: #fff; border: 1px solid var(--tk-border2); color: var(--tk-text2);
