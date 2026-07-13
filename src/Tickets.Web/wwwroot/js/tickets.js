@@ -469,6 +469,15 @@
         ["filterDesde", "filterHasta", "filterEstatus", "filterClasificacion", "filterPrioridad", "filterSolicitante", "filterTipo"]
             .forEach(id => el(id).addEventListener("change", loadTickets));
 
+        // Al cambiar de pestaña: Comentarios abre abajo (chat); las demás, arriba.
+        document.querySelectorAll('#ticketDetailModal button[data-bs-toggle="tab"]').forEach(btn => {
+            btn.addEventListener("shown.bs.tab", e => {
+                const sc = document.querySelector("#ticketDetailModal .dtl-content");
+                if (!sc) return;
+                sc.scrollTop = e.target.getAttribute("data-bs-target") === "#tabComentarios" ? sc.scrollHeight : 0;
+            });
+        });
+
         // Detalle
         el("dtlClasificacion").addEventListener("change", e => loadCategorias(e.target.value, "dtlCategoria", false));
         el("btnDtlEdit").addEventListener("click", () => setEditMode(true));
