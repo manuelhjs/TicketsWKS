@@ -282,23 +282,41 @@
         } catch (e) { toast(e.message, "danger"); }
     }
     async function populateDetail(t) {
+        state.currentTicket = t;
         el("ticketDetailModal").dataset.id = t.id;
         el("dtlId").textContent = "#" + t.id;
         el("dtlSolicitante").textContent = t.solicitanteNombre;
         el("dtlEstatusActual").textContent = t.estatusNombre;
         el("dtlCreated").textContent = fmtDateTime(t.createdAt);
+        // Modo lectura
+        el("dtlCorreoView").textContent = t.correo || "—";
+        el("dtlCelularView").textContent = t.celular || "—";
+        el("dtlTipoView").textContent = t.tipoSolicitudNombre;
+        el("dtlPrioridadView").textContent = t.prioridadNombre;
+        el("dtlClasificacionView").textContent = t.clasificacionNombre;
+        el("dtlCategoriaView").textContent = t.categoriaNombre;
+        el("dtlDescripcionView").textContent = t.descripcion;
+        // Modo edición
         el("dtlCorreo").value = t.correo || "";
         el("dtlCelular").value = t.celular || "";
         el("dtlTipo").value = t.tipoSolicitud;
         el("dtlPrioridad").value = t.prioridadId;
         el("dtlClasificacion").value = t.clasificacionId;
         el("dtlDescripcion").value = t.descripcion;
+        // Gestión
         el("dtlEstatus").value = t.estatusId;
         el("dtlEstatusComentario").value = "";
         el("dtlResponsable").value = t.responsableEmpleadoId || "";
         el("dtlCommentTicketId").value = t.id;
         await loadCategorias(t.clasificacionId, "dtlCategoria", false);
         el("dtlCategoria").value = t.categoriaId;
+        setEditMode(false);
+    }
+    function setEditMode(on) {
+        document.querySelectorAll("#tabDetalle .dtl-view").forEach(e => e.classList.toggle("d-none", on));
+        document.querySelectorAll("#tabDetalle .dtl-edit").forEach(e => e.classList.toggle("d-none", !on));
+        el("btnDtlEdit").classList.toggle("d-none", on);
+        el("btnDtlCancelEdit").classList.toggle("d-none", !on);
     }
     function ticketId() { return el("ticketDetailModal").dataset.id; }
     async function saveDetail() {
@@ -310,7 +328,9 @@
                 CategoriaId: el("dtlCategoria").value, PrioridadId: el("dtlPrioridad").value, Descripcion: el("dtlDescripcion").value
             });
             toast("Cambios guardados.", "success");
-            await Promise.all([loadTickets(), loadLog(id)]);
+            const t = (await getJson(cfg.urls.getTicket, { id })).data;
+            await populateDetail(t);      // refresca vista y vuelve a modo lectura
+            await loadTickets();
         } catch (e) { toast(e.message, "danger"); }
     }
     async function changeStatus() {
@@ -447,6 +467,8 @@
 
         // Detalle
         el("dtlClasificacion").addEventListener("change", e => loadCategorias(e.target.value, "dtlCategoria", false));
+        el("btnDtlEdit").addEventListener("click", () => setEditMode(true));
+        el("btnDtlCancelEdit").addEventListener("click", () => { if (state.currentTicket) populateDetail(state.currentTicket); });
         el("btnDtlSave").addEventListener("click", saveDetail);
         el("btnDtlChangeStatus").addEventListener("click", changeStatus);
         el("btnDtlAssign").addEventListener("click", assignResponsable);

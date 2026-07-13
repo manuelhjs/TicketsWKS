@@ -1,15 +1,16 @@
 @*
-    Modal de DETALLE / edición del ticket, con pestañas.
-    Estatus: al cambiarlo es obligatorio un comentario (se registra en HistorialEstatus).
+    Modal de DETALLE / edición del ticket (estructura del diseño "Mejora de diseño moderno").
+    Detalle: modo lectura por defecto + "Editar". Cambio de estatus exige comentario.
 *@
 <div class="modal fade" id="ticketDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Ticket <span id="dtlId"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
-            <div class="modal-body">
+
+            <div class="modal-body pt-0">
                 <ul class="nav nav-tabs mb-3" role="tablist">
                     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabDetalle" type="button">Detalle</button></li>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabComentarios" type="button">Comentarios</button></li>
@@ -18,66 +19,80 @@
                 </ul>
 
                 <div class="tab-content dtl-content">
-                    <!-- DETALLE / EDICIÓN -->
+                    <!-- DETALLE -->
                     <div class="tab-pane fade show active" id="tabDetalle">
-                        <div class="row g-2 small mb-2">
-                            <div class="col-md-4"><strong>Solicitante:</strong> <span id="dtlSolicitante"></span></div>
-                            <div class="col-md-4"><strong>Estatus:</strong> <span id="dtlEstatusActual" class="badge bg-secondary"></span></div>
-                            <div class="col-md-4"><strong>Creación:</strong> <span id="dtlCreated"></span></div>
+
+                        <!-- Resumen + Editar -->
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <div class="d-flex flex-wrap gap-4" style="font-size:13.5px;">
+                                <div><strong>Solicitante:</strong> <span id="dtlSolicitante"></span></div>
+                                <div><strong>Estatus:</strong> <span id="dtlEstatusActual" class="badge-estatus"></span></div>
+                                <div><strong>Creación:</strong> <span id="dtlCreated"></span></div>
+                            </div>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-secondary" id="btnDtlEdit"><i class="bi bi-pencil"></i> Editar</button>
+                                <button type="button" class="btn btn-sm btn-secondary d-none" id="btnDtlCancelEdit">Cancelar edición</button>
+                            </div>
                         </div>
 
+                        <!-- Campos (lectura / edición) -->
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label">Correo</label>
-                                <input type="email" id="dtlCorreo" class="form-control form-control-sm" />
+                                <div class="dtl-view" id="dtlCorreoView"></div>
+                                <input type="email" class="form-control form-control-sm dtl-edit d-none" id="dtlCorreo" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Celular</label>
-                                <input type="tel" id="dtlCelular" class="form-control form-control-sm" maxlength="10" />
+                                <div class="dtl-view" id="dtlCelularView"></div>
+                                <input type="tel" class="form-control form-control-sm dtl-edit d-none" id="dtlCelular" maxlength="10" />
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label">Tipo de solicitud</label>
-                                <select id="dtlTipo" class="form-select form-select-sm">
+                                <div class="dtl-view" id="dtlTipoView"></div>
+                                <select class="form-select form-select-sm dtl-edit d-none" id="dtlTipo">
                                     <option value="1">Incidencia</option>
                                     <option value="2">Requerimiento</option>
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label class="form-label">Prioridad</label>
-                                <select id="dtlPrioridad" class="form-select form-select-sm"></select>
+                                <div class="dtl-view" id="dtlPrioridadView"></div>
+                                <select class="form-select form-select-sm dtl-edit d-none" id="dtlPrioridad"></select>
                             </div>
-                            <div class="col-md-4"></div>
                             <div class="col-md-6">
                                 <label class="form-label">Clasificación</label>
-                                <select id="dtlClasificacion" class="form-select form-select-sm"></select>
+                                <div class="dtl-view" id="dtlClasificacionView"></div>
+                                <select class="form-select form-select-sm dtl-edit d-none" id="dtlClasificacion"></select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Categoría</label>
-                                <select id="dtlCategoria" class="form-select form-select-sm"></select>
+                                <div class="dtl-view" id="dtlCategoriaView"></div>
+                                <select class="form-select form-select-sm dtl-edit d-none" id="dtlCategoria"></select>
                             </div>
                             <div class="col-12">
                                 <label class="form-label">Descripción</label>
-                                <textarea id="dtlDescripcion" class="form-control form-control-sm" rows="3" maxlength="2000"></textarea>
+                                <div class="dtl-view dtl-desc" id="dtlDescripcionView"></div>
+                                <textarea class="form-control form-control-sm dtl-edit d-none" id="dtlDescripcion" rows="3" maxlength="2000"></textarea>
                             </div>
                         </div>
-                        <div class="mt-2">
+                        <div class="mt-3 dtl-edit d-none">
                             <button type="button" class="btn btn-sm btn-primary" id="btnDtlSave">Guardar cambios</button>
                         </div>
 
                         <hr />
 
-                        <!-- Cambio de estatus (comentario obligatorio) -->
-                        <div class="border rounded p-2 bg-light mb-3">
-                            <h6 class="mb-2">Cambiar estatus</h6>
+                        <!-- Cambiar estatus -->
+                        <div class="dtl-status-box mb-3">
+                            <div class="fw-bold mb-2" style="font-size:14px;">Cambiar estatus</div>
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-3">
-                                    <label class="form-label mb-0 small">Nuevo estatus</label>
+                                    <label class="form-label mb-1 small text-muted">Nuevo estatus</label>
                                     <select id="dtlEstatus" class="form-select form-select-sm"></select>
                                 </div>
                                 <div class="col-md-7">
-                                    <label class="form-label mb-0 small">Comentario <span class="text-danger">*</span></label>
-                                    <input type="text" id="dtlEstatusComentario" class="form-control form-control-sm"
-                                           placeholder="Obligatorio al cambiar de estatus" />
+                                    <label class="form-label mb-1 small text-muted">Comentario <span class="text-danger">*</span></label>
+                                    <input type="text" id="dtlEstatusComentario" class="form-control form-control-sm" placeholder="Obligatorio al cambiar de estatus" />
                                 </div>
                                 <div class="col-md-2">
                                     <button type="button" class="btn btn-sm btn-warning w-100" id="btnDtlChangeStatus">Aplicar</button>
@@ -86,26 +101,23 @@
                         </div>
 
                         <!-- Responsable -->
-                        <div class="row g-2 align-items-end mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label mb-0 small">Responsable</label>
-                                <select id="dtlResponsable" class="form-select form-select-sm"></select>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" class="btn btn-sm btn-outline-primary w-100" id="btnDtlAssign">Asignar</button>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" class="btn btn-sm btn-outline-danger w-100" id="btnDtlInactivate">Inactivar</button>
+                        <div class="mb-3">
+                            <label class="form-label">Responsable</label>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <select id="dtlResponsable" class="form-select form-select-sm" style="flex:1; min-width:160px;"></select>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="btnDtlAssign">Asignar</button>
                             </div>
                         </div>
 
-                        <!-- Adjuntos -->
-                        <h6 class="mb-2">Evidencias</h6>
-                        <ul id="dtlAdjuntos" class="list-unstyled small mb-2"></ul>
-                        <div class="input-group input-group-sm">
-                            <input type="file" id="dtlFiles" class="form-control" multiple
-                                   accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv" />
-                            <button type="button" class="btn btn-outline-primary" id="btnDtlUpload">Subir</button>
+                        <!-- Evidencias -->
+                        <div>
+                            <label class="form-label">Evidencias</label>
+                            <ul id="dtlAdjuntos" class="list-unstyled small mb-2"></ul>
+                            <div class="dtl-attach-box d-flex align-items-center gap-2">
+                                <input type="file" id="dtlFiles" class="form-control form-control-sm" style="flex:1;" multiple
+                                       accept=".pdf,.jpg,.jpeg,.png,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.txt,.csv" />
+                                <button type="button" class="btn btn-sm btn-primary" id="btnDtlUpload">Subir</button>
+                            </div>
                         </div>
                     </div>
 
@@ -127,7 +139,7 @@
                         </table>
                     </div>
 
-                    <!-- BITÁCORA (log general, solo lectura) -->
+                    <!-- BITÁCORA -->
                     <div class="tab-pane fade" id="tabBitacora">
                         <table class="table table-sm">
                             <thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th><th>Antes</th><th>Después</th><th>Usuario</th></tr></thead>
@@ -136,8 +148,10 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-sm btn-outline-danger" id="btnDtlInactivate">Inactivar ticket</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
