@@ -91,6 +91,7 @@ hr { border-color: var(--tk-border); opacity: 1; }
     border-radius: 10px;
 }
 .form-control { padding: .55rem .75rem; }
+.form-control-sm { padding: .4rem .6rem; }
 /* padding-right amplio para no encimar el número con el caret del select */
 .form-select { padding: .55rem 2.25rem .55rem .75rem; background-position: right .75rem center; }
 .form-select-sm { padding: .4rem 2rem .4rem .6rem; background-position: right .6rem center; }
