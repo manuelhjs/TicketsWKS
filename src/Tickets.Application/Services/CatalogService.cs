@@ -37,7 +37,9 @@ public sealed class CatalogService(ICatalogRepository catalogRepository) : ICata
         if (nombre.Length == 0)
             throw new ValidationException("El nombre de la clasificación es obligatorio.");
 
-        var existing = await catalogRepository.GetClasificacionByNombreAsync(nombre, ct);
+        // Case-insensitive: si ya existe (aunque difiera en mayúsculas), se reutiliza.
+        var existing = (await catalogRepository.GetAllClasificacionesAsync(ct))
+            .FirstOrDefault(c => string.Equals(c.Nombre?.Trim(), nombre, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
             return new SelectOption { Value = existing.Id.ToString(), Text = existing.Nombre };
 
@@ -55,7 +57,10 @@ public sealed class CatalogService(ICatalogRepository catalogRepository) : ICata
         _ = await catalogRepository.GetClasificacionAsync(request.ClasificacionId, ct)
             ?? throw new ValidationException("La clasificación padre no existe.");
 
-        var existing = await catalogRepository.GetCategoriaByNombreAsync(request.ClasificacionId, nombre, ct);
+        // Case-insensitive dentro de la misma clasificación (incluye inactivas): si ya existe, se reutiliza.
+        var existing = (await catalogRepository.GetAllCategoriasAsync(ct))
+            .FirstOrDefault(c => c.ClasificacionId == request.ClasificacionId
+                && string.Equals(c.Nombre?.Trim(), nombre, StringComparison.OrdinalIgnoreCase));
         if (existing is not null)
             return new SelectOption { Value = existing.Id.ToString(), Text = existing.Nombre };
 

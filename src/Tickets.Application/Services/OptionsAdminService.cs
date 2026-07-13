@@ -17,8 +17,9 @@ public sealed class OptionsAdminService(ICatalogRepository catalog) : IOptionsAd
     public async Task<int> UpsertClasificacionAsync(UpsertClasificacionRequest r, CancellationToken ct = default)
     {
         var nombre = Require(r.Nombre, "El nombre de la clasificación es obligatorio.");
-        var dup = await catalog.GetClasificacionByNombreAsync(nombre, ct);
-        if (dup is not null && dup.Id != r.Id)
+        // Validación robusta (case-insensitive, sin depender de la collation de la BD).
+        var todas = await catalog.GetAllClasificacionesAsync(ct);
+        if (todas.Any(c => c.Id != r.Id && string.Equals(c.Nombre?.Trim(), nombre, StringComparison.OrdinalIgnoreCase)))
             throw new ValidationException("Ya existe una clasificación con ese nombre.");
 
         if (r.Id == 0)
@@ -57,8 +58,10 @@ public sealed class OptionsAdminService(ICatalogRepository catalog) : IOptionsAd
         _ = await catalog.GetClasificacionAsync(r.ClasificacionId, ct)
             ?? throw new ValidationException("La clasificación padre no existe.");
 
-        var dup = await catalog.GetCategoriaByNombreAsync(r.ClasificacionId, nombre, ct);
-        if (dup is not null && dup.Id != r.Id)
+        // Validación robusta (case-insensitive) dentro de la misma clasificación.
+        var todas = await catalog.GetAllCategoriasAsync(ct);
+        if (todas.Any(c => c.Id != r.Id && c.ClasificacionId == r.ClasificacionId
+                && string.Equals(c.Nombre?.Trim(), nombre, StringComparison.OrdinalIgnoreCase)))
             throw new ValidationException("Ya existe una categoría con ese nombre en la clasificación.");
 
         if (r.Id == 0)
