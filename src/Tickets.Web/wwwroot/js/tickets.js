@@ -376,7 +376,11 @@
         list.innerHTML = data.length
             ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between align-items-baseline gap-2"><span class="cmt-author">' + escapeHtml(c.autorNombre) + '</span><span class="cmt-date">' + fmtDateTime(c.createdAt) + '</span></div><div class="cmt-text">' + escapeHtml(c.comentario) + '</div></div>').join("")
             : '<p class="text-muted text-center small">Sin comentarios.</p>';
-        list.scrollTop = list.scrollHeight; // baja al último comentario (estilo chat)
+        // Baja al último comentario (estilo chat) solo si la pestaña está activa.
+        if (el("tabComentarios").classList.contains("active")) {
+            const sc = document.querySelector("#ticketDetailModal .dtl-content");
+            if (sc) sc.scrollTop = sc.scrollHeight;
+        }
     }
     async function loadHistorial(id) {
         const data = (await getJson(cfg.urls.getHistorial, { ticketId: id })).data;

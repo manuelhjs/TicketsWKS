@@ -47,10 +47,14 @@
 .dtl-status-box { background: var(--tk-bg2); border: 1px solid var(--tk-border); border-radius: 12px; padding: 16px 18px; }
 .dtl-attach-box { background: var(--tk-bg2); border: 1px dashed var(--tk-border2); border-radius: 9px; padding: 10px 12px; }
 
-/* Pestaña Comentarios estilo chat: lista scrolleable + input fijo al fondo */
-.dtl-content > #tabComentarios.active { display: flex; flex-direction: column; height: 100%; }
-#tabComentarios .comments-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; margin-bottom: .75rem; }
-#tabComentarios #dtlCommentForm { flex-shrink: 0; }
+/* Pestaña Comentarios: usa el scroll del modal (scrollbar en la orilla) + input pegado abajo */
+#tabComentarios .comments-list { max-height: none; overflow: visible; }
+#tabComentarios .dtl-chat-input { position: sticky; bottom: 0; background: #fff; padding-top: 8px; }
+
+/* Tamaños de texto del modal (según el diseño) */
+.dtl-content .form-label { font-size: 12.5px; }
+.dtl-content .admin-table { font-size: 13px; }
+.dtl-content .admin-table td, .dtl-content .admin-table th { padding: 10px 14px; }
 
 /* Comentarios (estilo del diseño) */
 .comments-list { max-height: 45vh; overflow-y: auto; }
