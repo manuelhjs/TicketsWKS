@@ -66,6 +66,9 @@
                         <option value="2">Requerimiento</option>
                     </select>
                 </div>
+                <div class="col-6 col-md-auto">
+                    <button type="button" class="btn-clear" id="btnClearFilters">Limpiar filtros</button>
+                </div>
             </div>
         </div>
     </div>
@@ -73,11 +76,8 @@
     <!-- Tabla -->
     <div class="card">
         <div class="card-body">
-            <div class="d-flex justify-content-end mb-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnExportTickets">
-                    <i class="bi bi-download"></i> Exportar
-                </button>
-            </div>
+            <!-- Se reubica junto al buscador de DataTables en initComplete -->
+            <button type="button" class="btn-export d-none" id="btnExportTickets">↓ Exportar</button>
             <table class="table table-sm table-hover table-striped w-100" id="ticketsTable">
                 <thead>
                     <tr>

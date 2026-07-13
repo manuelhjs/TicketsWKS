@@ -263,7 +263,19 @@
                 { data: "estatusNombre", render: d => '<span class="badge bg-secondary">' + escapeHtml(d) + '</span>' },
                 { data: "responsableNombre", render: d => escapeHtml(d || "—") },
                 { data: "createdAt", render: fmtDate }
-            ]
+            ],
+            // Coloca "Exportar" a la izquierda del buscador (como en el diseño)
+            initComplete: function () {
+                const container = this.api().table().container();
+                const filter = container.querySelector(".dataTables_filter");
+                const btn = el("btnExportTickets");
+                if (filter && btn) {
+                    const col = filter.parentElement;
+                    col.classList.add("d-flex", "justify-content-end", "align-items-center", "gap-3");
+                    col.insertBefore(btn, filter);
+                    btn.classList.remove("d-none");
+                }
+            }
         });
         $("#ticketsTable tbody").on("click", "tr", function () { const d = state.table.row(this).data(); if (d) openDetail(d.id); });
     }
@@ -475,6 +487,15 @@
             const qs = new URLSearchParams();
             Object.entries(currentFilter()).forEach(([k, val]) => { if (val) qs.append(k, val); });
             window.location = cfg.urls.exportTickets + "?" + qs.toString();
+        });
+
+        // Limpiar filtros: restablece el rango por defecto (3 meses) y recarga
+        const btnClear = el("btnClearFilters");
+        if (btnClear) btnClear.addEventListener("click", () => {
+            ["filterEstatus", "filterClasificacion", "filterPrioridad", "filterSolicitante", "filterTipo"]
+                .forEach(id => { const e = el(id); if (e) e.value = ""; });
+            setDefaultDateRange();
+            loadTickets();
         });
 
         // Al cambiar de pestaña: Comentarios abre abajo (chat); las demás, arriba.
