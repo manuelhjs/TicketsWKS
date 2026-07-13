@@ -38,37 +38,25 @@
     <!-- Filtros (recargan la tabla automáticamente al cambiar) -->
     <div class="card mb-3">
         <div class="card-body">
-            <div class="row g-2 align-items-end">
-                <div class="col-6 col-md-2">
+            <div class="filters-bar">
+                <div class="filter-field">
                     <label class="form-label form-label-sm mb-0 small">Desde</label>
                     <input type="date" id="filterDesde" class="form-control form-control-sm" />
                 </div>
-                <div class="col-6 col-md-2">
+                <div class="filter-field">
                     <label class="form-label form-label-sm mb-0 small">Hasta</label>
                     <input type="date" id="filterHasta" class="form-control form-control-sm" />
                 </div>
-                <div class="col-6 col-md">
-                    <select id="filterEstatus" class="form-select form-select-sm"><option value="">Estatus</option></select>
-                </div>
-                <div class="col-6 col-md">
-                    <select id="filterClasificacion" class="form-select form-select-sm"><option value="">Clasificación</option></select>
-                </div>
-                <div class="col-6 col-md">
-                    <select id="filterPrioridad" class="form-select form-select-sm"><option value="">Prioridad</option></select>
-                </div>
-                <div class="col-6 col-md">
-                    <select id="filterSolicitante" class="form-select form-select-sm"><option value="">Solicitante</option></select>
-                </div>
-                <div class="col-6 col-md">
-                    <select id="filterTipo" class="form-select form-select-sm">
-                        <option value="">Tipo</option>
-                        <option value="1">Incidencia</option>
-                        <option value="2">Requerimiento</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-auto">
-                    <button type="button" class="btn-clear" id="btnClearFilters">Limpiar filtros</button>
-                </div>
+                <select id="filterEstatus" class="form-select form-select-sm filter-select"><option value="">Estatus</option></select>
+                <select id="filterClasificacion" class="form-select form-select-sm filter-select"><option value="">Clasificación</option></select>
+                <select id="filterPrioridad" class="form-select form-select-sm filter-select"><option value="">Prioridad</option></select>
+                <select id="filterSolicitante" class="form-select form-select-sm filter-select"><option value="">Solicitante</option></select>
+                <select id="filterTipo" class="form-select form-select-sm filter-select">
+                    <option value="">Tipo</option>
+                    <option value="1">Incidencia</option>
+                    <option value="2">Requerimiento</option>
+                </select>
+                <button type="button" class="btn-clear" id="btnClearFilters">Limpiar filtros</button>
             </div>
         </div>
     </div>
