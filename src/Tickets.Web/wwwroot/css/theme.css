@@ -140,7 +140,7 @@ hr { border-color: var(--tk-border); opacity: 1; }
 .tk-dropdown-toggle.open, .tk-dropdown-toggle:focus {
     border-color: var(--tk-accent); box-shadow: 0 0 0 3px var(--tk-ring); outline: none; background: #fff;
 }
-.tk-dropdown-label.placeholder { color: var(--tk-muted); }
+.tk-dropdown-label.tk-placeholder { color: var(--tk-muted); }
 .tk-caret { color: var(--tk-muted); }
 .tk-dropdown-menu {
     display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;

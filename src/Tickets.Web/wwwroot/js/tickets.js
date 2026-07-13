@@ -118,7 +118,7 @@
         el(prefix + "Value").value = value || "";
         const lbl = el(prefix + "Label");
         lbl.textContent = text;
-        lbl.classList.toggle("placeholder", !value);
+        lbl.classList.toggle("tk-placeholder", !value);
     }
     function ddOpen(prefix, open) {
         el(prefix + "Menu").classList.toggle("show", open);
