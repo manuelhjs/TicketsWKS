@@ -78,12 +78,12 @@
         initTooltips(box);
         const opts = state.prioridades.map(p => ({ value: p.id, text: p.nombre }));
         fillSelect("dtlPrioridad", opts);
-        fillSelect("filterPrioridad", opts, "Prioridad");
+        fillSelect("filterPrioridad", opts, "Todos");
     }
     async function loadEstatus() {
         state.estatus = (await getJson(cfg.urls.getEstatus)).data;
         const opts = state.estatus.map(e => ({ value: e.id, text: e.nombre }));
-        fillSelect("filterEstatus", opts, "Estatus");
+        fillSelect("filterEstatus", opts, "Todos");
         fillSelect("dtlEstatus", opts);
     }
     async function loadClasificaciones() {
@@ -92,7 +92,7 @@
         ddSetItems("createClasificacionMenu", state.clasificaciones, onSelectClasif, () => state.modals.clasificacion.show());
         // Selects nativos (detalle + filtro)
         fillSelect("dtlClasificacion", state.clasificaciones);
-        fillSelect("filterClasificacion", state.clasificaciones, "Clasificación");
+        fillSelect("filterClasificacion", state.clasificaciones, "Todos");
     }
 
     // ---------- Dropdown personalizado ----------
@@ -149,7 +149,7 @@
         const opts = state.empleados.map(e => ({ value: e.id, text: e.nombre }));
         fillSelect("createSolicitante", opts, "Seleccione…");
         fillSelect("dtlResponsable", opts, "— Sin responsable —");
-        fillSelect("filterSolicitante", opts, "Solicitante");
+        fillSelect("filterSolicitante", opts, "Todos");
         selectCurrentSolicitante();
     }
     async function loadCategorias(clasId, targetId, includeOtro) {

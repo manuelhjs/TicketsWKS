@@ -39,24 +39,43 @@
     <div class="card mb-3">
         <div class="card-body">
             <div class="filters-bar">
-                <div class="filter-field">
-                    <label class="form-label form-label-sm mb-0 small">Desde</label>
-                    <input type="date" id="filterDesde" class="form-control form-control-sm" />
+                <div class="filters-row">
+                    <div class="filter-field">
+                        <label class="filter-label">Desde</label>
+                        <input type="date" id="filterDesde" class="form-control form-control-sm" />
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Hasta</label>
+                        <input type="date" id="filterHasta" class="form-control form-control-sm" />
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Estatus</label>
+                        <select id="filterEstatus" class="form-select form-select-sm filter-select"><option value="">Todos</option></select>
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Clasificación</label>
+                        <select id="filterClasificacion" class="form-select form-select-sm filter-select"><option value="">Todos</option></select>
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Prioridad</label>
+                        <select id="filterPrioridad" class="form-select form-select-sm filter-select"><option value="">Todos</option></select>
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Solicitante</label>
+                        <select id="filterSolicitante" class="form-select form-select-sm filter-select"><option value="">Todos</option></select>
+                    </div>
+                    <div class="filter-field">
+                        <label class="filter-label">Tipo</label>
+                        <select id="filterTipo" class="form-select form-select-sm filter-select">
+                            <option value="">Todos</option>
+                            <option value="1">Incidencia</option>
+                            <option value="2">Requerimiento</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="filter-field">
-                    <label class="form-label form-label-sm mb-0 small">Hasta</label>
-                    <input type="date" id="filterHasta" class="form-control form-control-sm" />
+                <div>
+                    <button type="button" class="btn-clear" id="btnClearFilters">Limpiar filtros</button>
                 </div>
-                <select id="filterEstatus" class="form-select form-select-sm filter-select"><option value="">Estatus</option></select>
-                <select id="filterClasificacion" class="form-select form-select-sm filter-select"><option value="">Clasificación</option></select>
-                <select id="filterPrioridad" class="form-select form-select-sm filter-select"><option value="">Prioridad</option></select>
-                <select id="filterSolicitante" class="form-select form-select-sm filter-select"><option value="">Solicitante</option></select>
-                <select id="filterTipo" class="form-select form-select-sm filter-select">
-                    <option value="">Tipo</option>
-                    <option value="1">Incidencia</option>
-                    <option value="2">Requerimiento</option>
-                </select>
-                <button type="button" class="btn-clear" id="btnClearFilters">Limpiar filtros</button>
             </div>
         </div>
     </div>

@@ -23,11 +23,16 @@
 .tickets-page .stat.text-info .stat-value { color: var(--tk-accent); }
 .tickets-page .stat.text-success .stat-value { color: var(--tk-success); }
 
-/* Barra de filtros — distribución flex del diseño (cada campo a su tamaño, alineados abajo) */
-.filters-bar { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+/* Barra de filtros — distribución del diseño: columna (campos arriba, Limpiar debajo) */
+.filters-bar { display: flex; flex-direction: column; gap: 14px; }
+.filters-row { display: flex; flex-wrap: wrap; gap: 16px; }
 .filters-bar .filter-field { display: flex; flex-direction: column; }
+.filters-bar .filter-label {
+    display: block; font-size: 11.5px; color: var(--tk-muted);
+    margin-bottom: 5px; font-weight: 400;
+}
 .filters-bar .form-control-sm { width: auto; }
-.filters-bar .filter-select { min-width: 120px; width: auto; }
+.filters-bar .filter-select { min-width: 150px; width: auto; }
 
 /* Botón "Limpiar filtros" (barra de filtros) — con color propio para no perderse entre los filtros */
 .btn-clear {
