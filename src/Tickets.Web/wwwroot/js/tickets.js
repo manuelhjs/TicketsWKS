@@ -469,6 +469,14 @@
         ["filterDesde", "filterHasta", "filterEstatus", "filterClasificacion", "filterPrioridad", "filterSolicitante", "filterTipo"]
             .forEach(id => el(id).addEventListener("change", loadTickets));
 
+        // Exportar a CSV (respeta los filtros activos)
+        const btnExport = el("btnExportTickets");
+        if (btnExport) btnExport.addEventListener("click", () => {
+            const qs = new URLSearchParams();
+            Object.entries(currentFilter()).forEach(([k, val]) => { if (val) qs.append(k, val); });
+            window.location = cfg.urls.exportTickets + "?" + qs.toString();
+        });
+
         // Al cambiar de pestaña: Comentarios abre abajo (chat); las demás, arriba.
         document.querySelectorAll('#ticketDetailModal button[data-bs-toggle="tab"]').forEach(btn => {
             btn.addEventListener("shown.bs.tab", e => {

@@ -73,6 +73,11 @@
     <!-- Tabla -->
     <div class="card">
         <div class="card-body">
+            <div class="d-flex justify-content-end mb-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnExportTickets">
+                    <i class="bi bi-download"></i> Exportar
+                </button>
+            </div>
             <table class="table table-sm table-hover table-striped w-100" id="ticketsTable">
                 <thead>
                     <tr>
@@ -105,6 +110,7 @@
             currentEmpleadoId: @Model.CurrentEmpleadoId,
             urls: {
                 getTickets: '@Url.Action("GetTickets")',
+                exportTickets: '@Url.Action("Export")',
                 getTicket: '@Url.Action("GetTicket")',
                 getDashboard: '@Url.Action("GetDashboard")',
                 getClasificaciones: '@Url.Action("GetClasificaciones")',

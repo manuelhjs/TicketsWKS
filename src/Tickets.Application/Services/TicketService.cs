@@ -28,6 +28,39 @@ public sealed partial class TicketService(
     public Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default)
         => ticketRepository.GetListAsync(filter, 5000, ct);
 
+    public async Task<byte[]> ExportCsvAsync(TicketFilterDto filter, CancellationToken ct = default)
+    {
+        var items = await ticketRepository.GetListAsync(filter, 50000, ct);
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('﻿'); // BOM para que Excel reconozca UTF-8
+        sb.AppendLine("Id,Solicitante,Tipo,Clasificacion,Categoria,Prioridad,Estatus,Responsable,Creacion,Cierre");
+        foreach (var t in items)
+        {
+            sb.Append(t.Id).Append(',')
+              .Append(Csv(t.SolicitanteNombre)).Append(',')
+              .Append(Csv(t.TipoSolicitudNombre)).Append(',')
+              .Append(Csv(t.ClasificacionNombre)).Append(',')
+              .Append(Csv(t.CategoriaNombre)).Append(',')
+              .Append(Csv(t.PrioridadNombre)).Append(',')
+              .Append(Csv(t.EstatusNombre)).Append(',')
+              .Append(Csv(t.ResponsableNombre)).Append(',')
+              .Append(t.CreatedAt.ToString("yyyy-MM-dd HH:mm")).Append(',')
+              .Append(t.ClosedAt?.ToString("yyyy-MM-dd HH:mm") ?? "")
+              .Append('\n');
+        }
+        return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    /// <summary>Escapa un valor para CSV (comillas dobles si contiene coma, comilla o salto de línea).</summary>
+    private static string Csv(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+        return value.IndexOfAny(['"', ',', '\n', '\r']) >= 0
+            ? "\"" + value.Replace("\"", "\"\"") + "\""
+            : value;
+    }
+
     public async Task<TicketDetailDto> GetDetailAsync(int id, CancellationToken ct = default)
         => await ticketRepository.GetDetailAsync(id, ct)
            ?? throw new NotFoundException($"Ticket {id} no encontrado.");

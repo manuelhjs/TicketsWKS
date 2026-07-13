@@ -7,6 +7,7 @@ public interface ITicketService
 {
     Task<DashboardDto> GetDashboardAsync(CancellationToken ct = default);
     Task<IReadOnlyList<TicketListItemDto>> GetTicketsAsync(TicketFilterDto filter, CancellationToken ct = default);
+    Task<byte[]> ExportCsvAsync(TicketFilterDto filter, CancellationToken ct = default);
     Task<TicketDetailDto> GetDetailAsync(int id, CancellationToken ct = default);
 
     Task<int> CreateAsync(CreateTicketRequest request, CancellationToken ct = default);

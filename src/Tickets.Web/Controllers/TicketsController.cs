@@ -59,6 +59,13 @@ public sealed class TicketsController(
         => Json(new { success = true, items = await ticketService.GetTicketsAsync(filter, ct) });
 
     [HttpGet]
+    public async Task<IActionResult> Export([FromQuery] TicketFilterDto filter, CancellationToken ct)
+    {
+        var bytes = await ticketService.ExportCsvAsync(filter, ct);
+        return File(bytes, "text/csv", $"tickets_{DateTime.Now:yyyyMMdd_HHmm}.csv");
+    }
+
+    [HttpGet]
     public async Task<IActionResult> GetTicket(int id, CancellationToken ct)
         => Json(new { success = true, data = await ticketService.GetDetailAsync(id, ct) });
 
