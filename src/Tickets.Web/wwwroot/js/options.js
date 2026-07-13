@@ -28,10 +28,10 @@
     }
     function acciones(kind, id, activo) {
         const toggle = activo
-            ? '<button class="btn-icon danger js-toggle" title="Desactivar" data-kind="' + kind + '" data-id="' + id + '" data-activo="false">⛔</button>'
-            : '<button class="btn-icon success js-toggle" title="Activar" data-kind="' + kind + '" data-id="' + id + '" data-activo="true">✅</button>';
+            ? '<button class="btn-icon danger js-toggle" title="Desactivar" data-kind="' + kind + '" data-id="' + id + '" data-activo="false"><i class="bi bi-dash-circle"></i></button>'
+            : '<button class="btn-icon success js-toggle" title="Activar" data-kind="' + kind + '" data-id="' + id + '" data-activo="true"><i class="bi bi-check-circle"></i></button>';
         return '<div class="d-flex gap-2 justify-content-end">' +
-            '<button class="btn-icon js-edit" title="Editar" data-kind="' + kind + '" data-id="' + id + '">✎</button>' +
+            '<button class="btn-icon js-edit" title="Editar" data-kind="' + kind + '" data-id="' + id + '"><i class="bi bi-pencil"></i></button>' +
             toggle + '</div>';
     }
 
