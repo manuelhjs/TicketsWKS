@@ -226,15 +226,15 @@ table.dataTable thead .dtfc-fixed-start { background-color: var(--tk-bg2); }
 
 /* ---------- Botones de ícono (acciones en tablas) ---------- */
 .btn-icon {
-    width: 26px; height: 26px; padding: 0; border-radius: 7px; font-size: .8rem; line-height: 1;
-    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; padding: 0; border-radius: 7px; font-size: 12px; line-height: 1;
+    display: inline-flex; align-items: center; justify-content: center; text-align: center;
     background: #fff; border: 1px solid var(--tk-border2); color: var(--tk-text2); cursor: pointer;
 }
 .btn-icon:hover { background: var(--tk-bg2); color: var(--tk-text); }
-.btn-icon.danger { border-color: #fecaca; color: var(--tk-danger); }
+.btn-icon.danger { border-color: #fecaca; color: #dc2626; }
 .btn-icon.danger:hover { background: #fef2f2; }
-.btn-icon.primary { background: var(--tk-accent); border-color: var(--tk-accent); color: #fff; }
-.btn-icon.primary:hover { filter: brightness(1.05); }
+.btn-icon.success { border-color: #bbf7d0; color: #059669; }
+.btn-icon.success:hover { background: #f0fdf4; }
 
 /* ---------- Tabs de Catálogos ---------- */
 .opciones-tabs { border-bottom: 1px solid var(--tk-border); padding: 0 8px; }

@@ -29,7 +29,7 @@
     function acciones(kind, id, activo) {
         const toggle = activo
             ? '<button class="btn-icon danger js-toggle" title="Desactivar" data-kind="' + kind + '" data-id="' + id + '" data-activo="false">⛔</button>'
-            : '<button class="btn-icon primary js-toggle" title="Activar" data-kind="' + kind + '" data-id="' + id + '" data-activo="true">✓</button>';
+            : '<button class="btn-icon success js-toggle" title="Activar" data-kind="' + kind + '" data-id="' + id + '" data-activo="true">✅</button>';
         return '<div class="d-flex gap-2 justify-content-end">' +
             '<button class="btn-icon js-edit" title="Editar" data-kind="' + kind + '" data-id="' + id + '">✎</button>' +
             toggle + '</div>';

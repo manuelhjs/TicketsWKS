@@ -28,7 +28,7 @@
     function acciones(e) {
         const t = e.activo
             ? '<button class="btn-icon danger js-toggle" title="Desactivar" data-id="' + e.id + '" data-activo="false">⛔</button>'
-            : '<button class="btn-icon primary js-toggle" title="Activar" data-id="' + e.id + '" data-activo="true">✓</button>';
+            : '<button class="btn-icon success js-toggle" title="Activar" data-id="' + e.id + '" data-activo="true">✅</button>';
         return '<div class="d-flex gap-2 justify-content-end"><button class="btn-icon js-edit" title="Editar" data-id="' + e.id + '">✎</button>' + t + '</div>';
     }
 
