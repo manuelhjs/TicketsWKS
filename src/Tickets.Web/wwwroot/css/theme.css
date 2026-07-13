@@ -242,6 +242,9 @@ table.dataTable thead .dtfc-fixed-start { background-color: var(--tk-bg2); }
 .opciones-tabs .nav-link.active { color: var(--tk-accent); font-weight: 600; background: transparent; border-bottom-color: var(--tk-accent); }
 .admin-table td, .admin-table th { padding: .7rem .9rem; vertical-align: middle; }
 .admin-table thead th { background: var(--tk-bg2); color: var(--tk-muted); font-weight: 600; border-bottom: 1px solid var(--tk-border); }
+/* Alto máximo con scroll y encabezado fijo */
+.admin-table-wrap { max-height: 60vh; overflow-y: auto; }
+.admin-table-wrap .admin-table thead th { position: sticky; top: 0; z-index: 1; }
 
 /* ---------- Footer ---------- */
 .app-footer { color: var(--tk-faint); font-size: .78rem; padding: 22px 0; margin-top: 12px; }
