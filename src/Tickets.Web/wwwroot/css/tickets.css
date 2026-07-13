@@ -23,13 +23,13 @@
 .tickets-page .stat.text-info .stat-value { color: var(--tk-accent); }
 .tickets-page .stat.text-success .stat-value { color: var(--tk-success); }
 
-/* Botón "Limpiar filtros" (barra de filtros) — según el diseño */
+/* Botón "Limpiar filtros" (barra de filtros) — con color propio para no perderse entre los filtros */
 .btn-clear {
-    background: #eef2f7; border: 1px solid var(--tk-border2); color: var(--tk-text2);
+    background: var(--tk-accent); border: 1px solid var(--tk-accent); color: #fff;
     font-weight: 600; font-size: 13px; padding: 9px 16px; border-radius: 9px;
     white-space: nowrap; cursor: pointer; line-height: 1;
 }
-.btn-clear:hover { background: #e2e8f0; }
+.btn-clear:hover { background: #0369a1; border-color: #0369a1; }
 
 /* Botón "Exportar" (cabecera de la tabla) — según el diseño */
 .btn-export {
