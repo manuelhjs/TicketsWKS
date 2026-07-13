@@ -52,10 +52,20 @@
 #tabComentarios .comments-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; margin-bottom: .75rem; }
 #tabComentarios #dtlCommentForm { flex-shrink: 0; }
 
-/* Comentarios */
+/* Comentarios (estilo del diseño) */
 .comments-list { max-height: 45vh; overflow-y: auto; }
-.comments-list .comment { border-bottom: 1px solid var(--tk-border); padding: .55rem 0; }
-.comments-list .comment:last-child { border-bottom: none; }
+.comments-list .comment { border-bottom: 1px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 16px; }
+.comments-list .comment:last-child { margin-bottom: 0; }
+.comments-list .cmt-author { font-weight: 700; font-size: 13.5px; color: var(--tk-text); }
+.comments-list .cmt-date { font-size: 12px; color: var(--tk-faint); white-space: nowrap; }
+.comments-list .cmt-text { font-size: 13.5px; color: var(--tk-text2); margin-top: 4px; line-height: 1.5; }
+
+/* Input de comentario (chat): input y botón más grandes */
+.dtl-chat-input .form-control { border-radius: 10px; }
+.dtl-chat-input .btn { border-radius: 10px; white-space: nowrap; }
+
+/* Badge de acción (Bitácora) */
+.badge-accion { background: var(--tk-bg); color: var(--tk-text2); font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 6px; }
 
 /* Evidencias (lista de adjuntos) */
 #dtlAdjuntos li { padding: 2px 0; }

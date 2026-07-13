@@ -374,20 +374,20 @@
         const data = (await getJson(cfg.urls.getComments, { ticketId: id })).data;
         const list = el("dtlComments");
         list.innerHTML = data.length
-            ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between"><strong>' + escapeHtml(c.autorNombre) + '</strong><small class="text-muted">' + fmtDateTime(c.createdAt) + '</small></div><div>' + escapeHtml(c.comentario) + '</div></div>').join("")
+            ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between align-items-baseline gap-2"><span class="cmt-author">' + escapeHtml(c.autorNombre) + '</span><span class="cmt-date">' + fmtDateTime(c.createdAt) + '</span></div><div class="cmt-text">' + escapeHtml(c.comentario) + '</div></div>').join("")
             : '<p class="text-muted text-center small">Sin comentarios.</p>';
         list.scrollTop = list.scrollHeight; // baja al último comentario (estilo chat)
     }
     async function loadHistorial(id) {
         const data = (await getJson(cfg.urls.getHistorial, { ticketId: id })).data;
         el("dtlHistorial").innerHTML = data.length
-            ? data.map(h => '<tr><td>' + fmtDateTime(h.fecha) + '</td><td>' + escapeHtml(h.estatusAnterior || "—") + '</td><td>' + escapeHtml(h.estatusNuevo) + '</td><td>' + escapeHtml(h.comentario) + '</td><td>' + escapeHtml(h.usuarioCodigo) + '</td></tr>').join("")
+            ? data.map(h => '<tr><td class="text-nowrap">' + fmtDateTime(h.fecha) + '</td><td class="text-muted">' + escapeHtml(h.estatusAnterior || "—") + '</td><td><span class="badge-estatus">' + escapeHtml(h.estatusNuevo) + '</span></td><td>' + escapeHtml(h.comentario) + '</td><td>' + escapeHtml(h.usuarioCodigo) + '</td></tr>').join("")
             : '<tr><td colspan="5" class="text-muted text-center">Sin registros.</td></tr>';
     }
     async function loadLog(id) {
         const data = (await getJson(cfg.urls.getLog, { ticketId: id })).data;
         el("dtlLog").innerHTML = data.length
-            ? data.map(l => '<tr><td>' + fmtDateTime(l.fechaHora) + '</td><td>' + escapeHtml(l.accion) + '</td><td>' + escapeHtml(l.descripcion || "") + '</td><td>' + escapeHtml(l.valorAnterior || "—") + '</td><td>' + escapeHtml(l.valorNuevo || "—") + '</td><td>' + escapeHtml(l.usuarioCodigo || "") + '</td></tr>').join("")
+            ? data.map(l => '<tr><td class="text-nowrap">' + fmtDateTime(l.fechaHora) + '</td><td><span class="badge-accion">' + escapeHtml(l.accion) + '</span></td><td>' + escapeHtml(l.descripcion || "") + '</td><td class="text-muted">' + escapeHtml(l.valorAnterior || "—") + '</td><td>' + escapeHtml(l.valorNuevo || "—") + '</td><td>' + escapeHtml(l.usuarioCodigo || "") + '</td></tr>').join("")
             : '<tr><td colspan="6" class="text-muted text-center">Sin registros.</td></tr>';
     }
 

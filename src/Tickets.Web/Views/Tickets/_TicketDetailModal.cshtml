@@ -124,27 +124,31 @@
                     <!-- COMENTARIOS -->
                     <div class="tab-pane fade" id="tabComentarios">
                         <div id="dtlComments" class="comments-list mb-3"></div>
-                        <form id="dtlCommentForm" class="d-flex gap-2">
+                        <form id="dtlCommentForm" class="dtl-chat-input d-flex gap-2">
                             <input type="hidden" id="dtlCommentTicketId" />
-                            <input type="text" id="dtlCommentBody" class="form-control form-control-sm" placeholder="Escribe un comentario…" required />
-                            <button type="submit" class="btn btn-sm btn-primary">Enviar</button>
+                            <input type="text" id="dtlCommentBody" class="form-control" placeholder="Escribe un comentario…" required />
+                            <button type="submit" class="btn btn-primary">Enviar</button>
                         </form>
                     </div>
 
                     <!-- HISTORIAL DE ESTATUS -->
                     <div class="tab-pane fade" id="tabHistorial">
-                        <table class="table table-sm">
-                            <thead><tr><th>Fecha</th><th>De</th><th>A</th><th>Comentario</th><th>Usuario</th></tr></thead>
-                            <tbody id="dtlHistorial"></tbody>
-                        </table>
+                        <div class="border rounded-3 overflow-hidden">
+                            <table class="table admin-table mb-0">
+                                <thead><tr><th>Fecha</th><th>De</th><th>A</th><th>Comentario</th><th>Usuario</th></tr></thead>
+                                <tbody id="dtlHistorial"></tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <!-- BITÁCORA -->
                     <div class="tab-pane fade" id="tabBitacora">
-                        <table class="table table-sm">
-                            <thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th><th>Antes</th><th>Después</th><th>Usuario</th></tr></thead>
-                            <tbody id="dtlLog"></tbody>
-                        </table>
+                        <div class="border rounded-3 overflow-hidden">
+                            <table class="table admin-table mb-0">
+                                <thead><tr><th>Fecha</th><th>Acción</th><th>Detalle</th><th>Antes</th><th>Después</th><th>Usuario</th></tr></thead>
+                                <tbody id="dtlLog"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
