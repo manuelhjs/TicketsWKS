@@ -26,6 +26,11 @@
 /* Modal de detalle: área de pestañas con alto constante (no cambia de tamaño entre pestañas) */
 .dtl-content { height: 58vh; overflow-y: auto; }
 
+/* Pestaña Comentarios estilo chat: lista scrolleable + input fijo al fondo */
+.dtl-content > #tabComentarios.active { display: flex; flex-direction: column; height: 100%; }
+#tabComentarios .comments-list { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; margin-bottom: .75rem; }
+#tabComentarios #dtlCommentForm { flex-shrink: 0; }
+
 /* Comentarios */
 .comments-list { max-height: 45vh; overflow-y: auto; }
 .comments-list .comment { border-bottom: 1px solid var(--tk-border); padding: .55rem 0; }

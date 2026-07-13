@@ -352,9 +352,11 @@
     }
     async function loadComments(id) {
         const data = (await getJson(cfg.urls.getComments, { ticketId: id })).data;
-        el("dtlComments").innerHTML = data.length
+        const list = el("dtlComments");
+        list.innerHTML = data.length
             ? data.map(c => '<div class="comment"><div class="d-flex justify-content-between"><strong>' + escapeHtml(c.autorNombre) + '</strong><small class="text-muted">' + fmtDateTime(c.createdAt) + '</small></div><div>' + escapeHtml(c.comentario) + '</div></div>').join("")
             : '<p class="text-muted text-center small">Sin comentarios.</p>';
+        list.scrollTop = list.scrollHeight; // baja al último comentario (estilo chat)
     }
     async function loadHistorial(id) {
         const data = (await getJson(cfg.urls.getHistorial, { ticketId: id })).data;
