@@ -28,7 +28,7 @@ public sealed class HistorialEstatusRepository(ISqlConnectionFactory connectionF
             LEFT JOIN dbo.Estatus ea ON ea.Id = h.EstatusAnteriorId
             INNER JOIN dbo.Estatus en ON en.Id = h.EstatusNuevoId
             WHERE h.TicketId = @TicketId
-            ORDER BY h.Fecha, h.Id;
+            ORDER BY h.Fecha DESC, h.Id DESC;
             """;
         await using var conn = connectionFactory.CreateTicketsConnection();
         return (await conn.QueryAsync<HistorialEstatusDto>(new CommandDefinition(sql, new { TicketId = ticketId }, cancellationToken: ct))).ToList();
