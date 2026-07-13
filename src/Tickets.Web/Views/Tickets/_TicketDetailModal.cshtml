@@ -3,22 +3,22 @@
     Detalle: modo lectura por defecto + "Editar". Cambio de estatus exige comentario.
 *@
 <div class="modal fade" id="ticketDetailModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Ticket <span id="dtlId"></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
 
-            <div class="modal-body pt-0">
-                <ul class="nav nav-tabs mb-3" role="tablist">
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs px-3" role="tablist">
                     <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabDetalle" type="button">Detalle</button></li>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabComentarios" type="button">Comentarios</button></li>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabHistorial" type="button">Historial de estatus</button></li>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabBitacora" type="button">Bitácora</button></li>
                 </ul>
 
-                <div class="tab-content dtl-content">
+                <div class="tab-content dtl-content modal-scroll">
                     <!-- DETALLE -->
                     <div class="tab-pane fade show active" id="tabDetalle">
 
@@ -30,8 +30,8 @@
                                 <div><strong>Creación:</strong> <span id="dtlCreated"></span></div>
                             </div>
                             <div>
-                                <button type="button" class="btn btn-sm btn-secondary" id="btnDtlEdit"><i class="bi bi-pencil"></i> Editar</button>
-                                <button type="button" class="btn btn-sm btn-secondary d-none" id="btnDtlCancelEdit">Cancelar edición</button>
+                                <button type="button" class="btn-text edit" id="btnDtlEdit">Editar</button>
+                                <button type="button" class="btn-text cancel d-none" id="btnDtlCancelEdit">Cancelar</button>
                             </div>
                         </div>
 
