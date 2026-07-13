@@ -14,7 +14,10 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .Enrich.FromLogContext());
 
 // --- MVC ---
-builder.Services.AddControllersWithViews();
+var mvc = builder.Services.AddControllersWithViews();
+// En desarrollo, recompila las vistas Razor al vuelo (los cambios en .cshtml se ven al refrescar).
+if (builder.Environment.IsDevelopment())
+    mvc.AddRazorRuntimeCompilation();
 
 // --- Capas de la aplicación ---
 builder.Services.AddApplication();
