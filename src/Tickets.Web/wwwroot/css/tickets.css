@@ -24,7 +24,7 @@
 .tickets-page .stat.text-success .stat-value { color: var(--tk-success); }
 
 /* Modal de detalle: área de pestañas con alto constante (no cambia de tamaño entre pestañas) */
-.dtl-content { height: 58vh; overflow-y: auto; }
+.dtl-content { height: 58vh; overflow-y: auto; overflow-x: hidden; }
 
 /* Pestaña Comentarios estilo chat: lista scrolleable + input fijo al fondo */
 .dtl-content > #tabComentarios.active { display: flex; flex-direction: column; height: 100%; }
