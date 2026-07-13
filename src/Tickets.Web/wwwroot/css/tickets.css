@@ -32,7 +32,8 @@
     margin-bottom: 5px; font-weight: 400;
 }
 .filters-bar .form-control-sm { width: auto; }
-.filters-bar .filter-select { min-width: 150px; width: auto; }
+/* Ancho fijo para que un select con opciones largas (Solicitante) no crezca y desacomode la fila */
+.filters-bar .filter-select { width: 150px; min-width: 150px; }
 
 /* Botón "Limpiar filtros" (barra de filtros) — con color propio para no perderse entre los filtros */
 .btn-clear {
